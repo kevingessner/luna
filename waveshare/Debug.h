@@ -38,9 +38,9 @@
 #include <stdio.h>
 
 #if DEBUG
-	#define Debug(fmt,...) printf("%s[%d]:"fmt,__FILE__,__LINE__,##__VA_ARGS__)
+	#define Debug(fmt,...) fprintf(stderr, "%s[%d]:"fmt,__FILE__,__LINE__,##__VA_ARGS__)
 #else
-	#define Debug(fmt,...) printf(fmt,##__VA_ARGS__)
+	#define Debug(fmt,...) fprintf(stderr, fmt,##__VA_ARGS__)
 #endif
 
 #endif

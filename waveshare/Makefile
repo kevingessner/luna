@@ -25,5 +25,4 @@ ${DIR_BIN}/%.o:%.c
 
 clean :
 	rm $(DIR_BIN)/*.* 
-	rm $(TARGET) 
 

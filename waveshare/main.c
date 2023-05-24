@@ -121,32 +121,25 @@ int main(int argc, char *argv[])
     }
     Debug("A2 Mode:%d\r\n", A2_Mode);
 
-	EPD_IT8951_Clear_Refresh(Dev_Info, Init_Target_Memory_Addr, INIT_Mode);
-
-    EPD_IT8951_Clear_Refresh(Dev_Info, Init_Target_Memory_Addr, GC16_Mode);
-
-	Debug("Showing bitmap");
-    //Show a bmp file
-    //1bp use A2 mode by default, before used it, refresh the screen with WHITE
-    Display_BMP_Example(Panel_Width, Panel_Height, Init_Target_Memory_Addr, argv[3], BitsPerPixel_4);
-    EPD_IT8951_Clear_Refresh(Dev_Info, Init_Target_Memory_Addr, GC16_Mode);
- 
- Debug("Sleep");
+	char *Path = argv[3];
+	if (strcmp(Path, "clear") == 0) {
+		Debug("Clearing\r\n");
     
-    //In case RPI is transmitting image in no hold mode, which requires at most 10s
-    DEV_Delay_ms(5000);
- Debug("Clearing");
-    
-    //We recommended refresh the panel to white color before storing in the warehouse.
-    EPD_IT8951_Clear_Refresh(Dev_Info, Init_Target_Memory_Addr, INIT_Mode);
+		//We recommended refresh the panel to white color before storing in the warehouse.
+		EPD_IT8951_Clear_Refresh(Dev_Info, Init_Target_Memory_Addr, INIT_Mode);
 
-    //EPD_IT8951_Standby();
-    EPD_IT8951_Sleep();
+	} else {
+		Debug("Showing bitmap\r\n");
+		// BPP param here is the number of bits per pixel in the e-paper write buffer, not the bitmap
+		Display_BMP_Example(Panel_Width, Panel_Height, Init_Target_Memory_Addr, Path, BitsPerPixel_8);
 
-    //In case RPI is transmitting image in no hold mode, which requires at most 10s
-    DEV_Delay_ms(5000);
-Debug("Bye");
-    
-    DEV_Module_Exit();
+	}
+	
+	Debug("Sleep\r\n");
+	EPD_IT8951_Sleep();
+
+	Debug("Bye\r\n");
+	DEV_Module_Exit();
+
     return 0;
 }

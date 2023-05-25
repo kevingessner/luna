@@ -9,6 +9,10 @@ the image path will be appended. e.g.:
 '''
 
 DISPLAY_DIMENSIONS_PX = '1872x1404'
+LATITUDE = 40.8
+LONGITUDE = -73.95
+TIMEZONE_NAME = 'America/New_York'
+
 CACHE_DIR = '/var/tmp/luna'
 CACHE_JSON_NAME = 'dialamoon.json'
 CACHE_IMAGE_NAME = 'tmp.jpg'
@@ -22,12 +26,16 @@ import subprocess
 import sys
 import time
 import urllib.request
+import zoneinfo
+from datetime import datetime, timezone, tzinfo
+
+import geometry
 
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
-def fetch_dialamoon(t):
-    url = 'https://svs.gsfc.nasa.gov/api/dialamoon/{}'.format(time.strftime('%Y-%m-%dT%H:%M', t))
+def fetch_dialamoon(dt: datetime):
+    url = 'https://svs.gsfc.nasa.gov/api/dialamoon/{}'.format(dt.strftime('%Y-%m-%dT%H:%M'))
     log.info(url)
     with urllib.request.urlopen(url) as r:
         return json.load(r)
@@ -72,10 +80,13 @@ def process_dam_image():
         ('convert',
         input_img_path,
         '-resize', DISPLAY_DIMENSIONS_PX,
+        # Center the (square) moon image on a black canvas the size of the display
         '-background', 'black',
         '-gravity', 'Center',
         '-extent', DISPLAY_DIMENSIONS_PX,
-        '-colorspace', 'LinearGray',
+        # 'Gray' makes for a nice contrasty conversion to grayscale
+        '-colorspace', 'Gray',
+        # Stretch the lightest part of the image to white.
         '-normalize',
         '-compress', 'none',
         output_img_path,
@@ -84,7 +95,8 @@ def process_dam_image():
     )
     log.info(f'processing complete {output_img_path}')
 
-def annotate_dam_image(t):
+def annotate_dam_image(dam, dt: datetime, tz: tzinfo):
+    mg = geometry.MoonGeometry(dt, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
     input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
     args = ('convert',
@@ -93,23 +105,28 @@ def annotate_dam_image(t):
         '-font', 'Helvetica',
         '-fill', 'white',
         '-pointsize', '40',
-        '-draw', f'''text 0,0 "{time.strftime('%H:%M:%S', t)}"''',
+        '-draw', f'''text 30,0 "{dt.astimezone(tz).strftime('%H:%M:%S')}"''',
+        '-draw', f'''text 30,50 "Alt: {mg.altitude:0.1f}deg"''',
+        '-draw', f'''text 30,100 "Az: {mg.azimuth:0.1f}deg"''',
         output_img_path,
     )
     log.info(f'annotating to {output_img_path}:\n{" ".join(args)}')
-    subprocess.run(args, check = True)
+    subprocess.run(args, check=True)
     log.info(f'annotating complete {output_img_path}')
 
 def display_dam_image(args):
     img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
     args = args + [img_path]
     log.info(f'displaying {args}')
-    subprocess.run(args, check = True)
+    # epd hangs occasionally. It takes <20s on a successful run,
+    # so kill it after 30.  The next cycle will try again.
+    subprocess.run(args, check=True, timeout=30)
 
 if __name__ == '__main__':
     os.makedirs(CACHE_DIR, exist_ok=True)
 
-    dam = fetch_dialamoon(time.gmtime())
+    utc_now = datetime.now(timezone.utc)
+    dam = fetch_dialamoon(utc_now)
     last_dam_image = cached_dam_image()
     new_dam_image = dam['image']['url']
     logging.info(f'checking {new_dam_image} against {last_dam_image}')
@@ -118,7 +135,7 @@ if __name__ == '__main__':
         download_image(new_dam_image)
         process_dam_image()
 
-    annotate_dam_image(time.localtime())
+    annotate_dam_image(dam, utc_now, zoneinfo.ZoneInfo(TIMEZONE_NAME))
     if len(sys.argv) > 1:
         display_dam_image(sys.argv[1].split(' '))
     cache_dam(dam)

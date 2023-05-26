@@ -1,6 +1,7 @@
 import math
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
+from functools import cached_property
 
 J2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -51,18 +52,18 @@ class MoonGeometry:
     moon_ra: float # in decimal hours
     moon_dec: float # in decimal degrees
 
-    @property
+    @cached_property
     def local_sidereal_time(self) -> float:
         time_hours = self.dt.hour + (self.dt.minute / 60.0)
         lst = 100.46 + 0.985647 * days_since_j2000(self.dt) + self.longitude + 15 * time_hours
         return lst % 360.0
 
-    @property
+    @cached_property
     def hour_angle(self) -> float:
         ra_degrees = self.moon_ra * 15.0
         return (self.local_sidereal_time - ra_degrees) % 360.0
 
-    @property
+    @cached_property
     def azimuth(self) -> float:
         alt = self.altitude
         cosaz = (dsin(self.moon_dec) - dsin(alt) * dsin(self.latitude)) / (dcos(alt) * dcos(self.latitude))
@@ -71,14 +72,16 @@ class MoonGeometry:
             return 360 - az
         return az
 
-    @property
+    @cached_property
     def altitude(self) -> float:
         sinalt = dsin(self.moon_dec) * dsin(self.latitude) + dcos(self.moon_dec) * dcos(self.latitude) * dcos(self.hour_angle)
         return math.degrees(math.asin(sinalt))
 
 def dsin(n: float) -> float:
+    '''math.sin on a value in degrees'''
     return math.sin(math.radians(n))
 def dcos(n: float) -> float:
+    '''math.cos on a value in degrees'''
     return math.cos(math.radians(n))
 
 def days_since_j2000(dt: datetime) -> float:

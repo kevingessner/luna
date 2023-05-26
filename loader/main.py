@@ -22,11 +22,17 @@ CACHE_FINAL_IMAGE_NAME = 'tmp-display.bmp'
 import json
 import logging
 import os
+import shlex
 import subprocess
 import sys
 import time
 import urllib.request
-import zoneinfo
+try:
+    # Only on Python 3.9+, but not critical
+    import zoneinfo
+    TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
+except:
+    TZ = None
 from datetime import datetime, timezone, tzinfo
 
 import geometry
@@ -97,6 +103,32 @@ def process_dam_image():
 
 def annotate_dam_image(dam, dt: datetime, tz: tzinfo):
     mg = geometry.MoonGeometry(dt, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
+
+    # Draw azimuth and altitude as a pointer with a dot.  Direction is the azimuth with south up and east left;
+    # altitude as an indicator along the pointer.
+    # The pointer is a radial line between r1 and r2,
+    # where r1 is just outside the moon image and r2 is just inside the edge of the display.
+    # The altitude is mapped from [-90, 90] to [r1, r2],
+    # such that values <= 0 are not drawn (moon not visible)
+    # and values > 0 are linearly interpolated to [r1, r2], accounting for the radius of the indicator
+    azimuth_r1, azimuth_r2 = 620, 700
+    color = '#777'
+    az_alt_draw_commands = [
+        f'stroke "{color}"',
+        f'fill "{color}"',
+        'stroke-width 3',
+        'translate {}'.format(','.join('%d' % (int(p)/2) for p in DISPLAY_DIMENSIONS_PX.split('x'))),
+        f'rotate {mg.azimuth:0.1f}',
+        f'line 0,{azimuth_r1},0,{azimuth_r2}',
+    ]
+    if mg.altitude > 0:
+        indicator_r = 10
+        alt_lerp = (mg.altitude / 90.0) * (azimuth_r2 - azimuth_r1 - 2 * indicator_r) + azimuth_r1 + indicator_r
+        az_alt_draw_commands += [
+            f'translate 0,{alt_lerp}',
+            f'circle 0,0,0,{indicator_r}',
+        ]
+
     input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
     args = ('convert',
@@ -108,9 +140,10 @@ def annotate_dam_image(dam, dt: datetime, tz: tzinfo):
         '-draw', f'''text 30,0 "{dt.astimezone(tz).strftime('%H:%M:%S')}"''',
         '-draw', f'''text 30,50 "Alt: {mg.altitude:0.1f}deg"''',
         '-draw', f'''text 30,100 "Az: {mg.azimuth:0.1f}deg"''',
+        '-draw', ' '.join(az_alt_draw_commands),
         output_img_path,
     )
-    log.info(f'annotating to {output_img_path}:\n{" ".join(args)}')
+    log.info(f'annotating to {output_img_path}:\n{shlex.join(args)}')
     subprocess.run(args, check=True)
     log.info(f'annotating complete {output_img_path}')
 
@@ -135,7 +168,7 @@ if __name__ == '__main__':
         download_image(new_dam_image)
         process_dam_image()
 
-    annotate_dam_image(dam, utc_now, zoneinfo.ZoneInfo(TIMEZONE_NAME))
+    annotate_dam_image(dam, utc_now, TZ)
     if len(sys.argv) > 1:
         display_dam_image(sys.argv[1].split(' '))
     cache_dam(dam)

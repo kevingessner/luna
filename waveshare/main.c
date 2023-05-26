@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	} else {
 		Debug("Showing bitmap\r\n");
 		// BPP param here is the number of bits per pixel in the e-paper write buffer, not the bitmap
-		Display_BMP_Example(Panel_Width, Panel_Height, Init_Target_Memory_Addr, Path, BitsPerPixel_8);
+		Display_BMP_Example(Panel_Width, Panel_Height, Init_Target_Memory_Addr, Path, BitsPerPixel_4);
 
 	}
 	

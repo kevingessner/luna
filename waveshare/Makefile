@@ -7,7 +7,7 @@ TARGET = $(DIR_BIN)/epd
 
 CC = gcc
 
-MSG = -g -O0 -Wall
+MSG = -g -O3 -Wall
 DEBUG = -D USE_DEBUG
 STD = -std=gnu99
 

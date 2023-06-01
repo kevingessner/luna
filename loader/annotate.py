@@ -9,7 +9,7 @@ import geometry
 
 log = logging.getLogger(__name__)
 
-azimuth_r1, azimuth_r2 = 620, 700 # inner and outer radius of the azimuth line and text. TODO these are only suitable for the 1872x1404 screen
+azimuth_r1, azimuth_r2 = 630, 700 # inner and outer radius of the azimuth line and text. TODO these are only suitable for the 1872x1404 screen
 indicator_r = 10 # radius of the altitude indicator dot
 color = '#aaa'
 

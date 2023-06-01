@@ -17,10 +17,10 @@ bcm2835:
 	$(MAKE) -C $(BCM2835) install
 
 .PHONY: clean
-clean:
+clean: uninstall
+	rm -f $(SYSTEMD)
 	$(MAKE) -C $(BCM2835) clean
 	$(MAKE) -C $(WAVESHARE) clean
-	rm -f $(SYSTEMD)
 
 $(SYSTEMD): systemd/luna.service.tmpl FORCE
 ifndef VCOM
@@ -30,6 +30,12 @@ endif
 
 .PHONY: install
 install: $(SYSTEMD)
-	sudo systemctl enable $<
+	sudo systemctl enable $(PWD)/$<
+	sudo systemctl start luna
+
+.PHONY: uninstall
+uninstall:
+	sudo systemctl stop luna || true
+	sudo systemctl disable luna || true
 
 FORCE:

@@ -30,9 +30,9 @@ import urllib.request
 try:
     # Only on Python 3.9+, but not critical
     import zoneinfo
-    TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
 except:
-    TZ = None
+    from backports import zoneinfo
+TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
 from datetime import datetime, timezone, tzinfo
 
 import annotate
@@ -115,13 +115,15 @@ def annotate_dam_image(dam, dt: datetime, tz: tzinfo):
     # Draw the cardinal directions around the circle, south up.
     # Don't draw one if the pointer will overlap it (i.e. it's within a few degrees).
     if not (360 - cardinal_skip_angle_delta < mg.azimuth or mg.azimuth < cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_cardinal_direction('N', 0, 0, cardinal_radius)
+        az_alt_draw_commands += annotate.draw_text('N', 0, 0, cardinal_radius)
     if not (90 - cardinal_skip_angle_delta < mg.azimuth < 90 + cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_cardinal_direction('E', 270, -cardinal_radius, 0)
+        az_alt_draw_commands += annotate.draw_text('E', 270, -cardinal_radius, 0)
     if not (180 - cardinal_skip_angle_delta < mg.azimuth < 180 + cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_cardinal_direction('S', 0, 0, -cardinal_radius)
+        az_alt_draw_commands += annotate.draw_text('S', 0, 0, -cardinal_radius)
     if not (270 - cardinal_skip_angle_delta < mg.azimuth < 270 + cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_cardinal_direction('W', 90, cardinal_radius, 0)
+        az_alt_draw_commands += annotate.draw_text('W', 90, cardinal_radius, 0)
+
+    az_alt_draw_commands += annotate.draw_moon_path(half_dimensions, dt, tz, mg)
 
     input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)

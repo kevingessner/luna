@@ -35,6 +35,7 @@ except:
     TZ = None
 from datetime import datetime, timezone, tzinfo
 
+import annotate
 import geometry
 
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
@@ -103,44 +104,30 @@ def process_dam_image():
 
 def annotate_dam_image(dam, dt: datetime, tz: tzinfo):
     mg = geometry.MoonGeometry(dt, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
+    half_dimensions = tuple(int(p)/2 for p in DISPLAY_DIMENSIONS_PX.split('x'))
+    az_alt_draw_commands = []
 
-    # Draw azimuth and altitude as a pointer with a dot.  Direction is the azimuth with south up and east left;
-    # altitude as an indicator along the pointer.
-    # The pointer is a radial line between r1 and r2,
-    # where r1 is just outside the moon image and r2 is just inside the edge of the display.
-    # The altitude is mapped from [-90, 90] to [r1, r2],
-    # such that values <= 0 are not drawn (moon not visible)
-    # and values > 0 are linearly interpolated to [r1, r2], accounting for the radius of the indicator
-    azimuth_r1, azimuth_r2 = 620, 700
-    color = '#777'
-    az_alt_draw_commands = [
-        f'stroke "{color}"',
-        f'fill "{color}"',
-        'stroke-width 3',
-        'translate {}'.format(','.join('%d' % (int(p)/2) for p in DISPLAY_DIMENSIONS_PX.split('x'))),
-        f'rotate {mg.azimuth:0.1f}',
-        f'line 0,{azimuth_r1},0,{azimuth_r2}',
-    ]
-    if mg.altitude > 0:
-        indicator_r = 10
-        alt_lerp = (mg.altitude / 90.0) * (azimuth_r2 - azimuth_r1 - 2 * indicator_r) + azimuth_r1 + indicator_r
-        az_alt_draw_commands += [
-            f'translate 0,{alt_lerp}',
-            f'circle 0,0,0,{indicator_r}',
-        ]
+    az_alt_draw_commands += annotate.draw_legend(dt, tz, mg)
+    az_alt_draw_commands += annotate.draw_indicator(half_dimensions, mg)
+
+    cardinal_radius = annotate.azimuth_r2 - 15
+    cardinal_skip_angle_delta = 4
+    # Draw the cardinal directions around the circle, south up.
+    # Don't draw one if the pointer will overlap it (i.e. it's within a few degrees).
+    if not (360 - cardinal_skip_angle_delta < mg.azimuth or mg.azimuth < cardinal_skip_angle_delta):
+        az_alt_draw_commands += annotate.draw_cardinal_direction('N', 0, 0, cardinal_radius)
+    if not (90 - cardinal_skip_angle_delta < mg.azimuth < 90 + cardinal_skip_angle_delta):
+        az_alt_draw_commands += annotate.draw_cardinal_direction('E', 270, -cardinal_radius, 0)
+    if not (180 - cardinal_skip_angle_delta < mg.azimuth < 180 + cardinal_skip_angle_delta):
+        az_alt_draw_commands += annotate.draw_cardinal_direction('S', 0, 0, -cardinal_radius)
+    if not (270 - cardinal_skip_angle_delta < mg.azimuth < 270 + cardinal_skip_angle_delta):
+        az_alt_draw_commands += annotate.draw_cardinal_direction('W', 90, cardinal_radius, 0)
 
     input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
     args = ('convert',
         input_img_path,
-        '-gravity', 'West',
-        '-font', 'Helvetica',
-        '-fill', 'white',
-        '-pointsize', '40',
-        '-draw', f'''text 30,0 "{dt.astimezone(tz).strftime('%H:%M:%S')}"''',
-        '-draw', f'''text 30,50 "Alt: {mg.altitude:0.1f}deg"''',
-        '-draw', f'''text 30,100 "Az: {mg.azimuth:0.1f}deg"''',
-        '-draw', ' '.join(az_alt_draw_commands),
+        *az_alt_draw_commands,
         output_img_path,
     )
     log.info(f'annotating to {output_img_path}:\n{shlex.join(args)}')

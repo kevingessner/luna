@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env venv/bin/python
 
 '''Downloads the current moon image from NASA's dial-a-moon API,
 formats it for display on the e-paper screen, then (optionally) displays it.

@@ -8,14 +8,14 @@ the image path will be appended. e.g.:
     $ ./main.py "bin/epd -1.37 1"
 '''
 
-DISPLAY_DIMENSIONS_PX = '1872x1404'
+DISPLAY_DIMENSIONS_PX = (1872, 1404)
 LATITUDE = 40.8
 LONGITUDE = -73.95
 TIMEZONE_NAME = 'America/New_York'
 
 CACHE_DIR = '/var/tmp/luna'
 CACHE_JSON_NAME = 'dialamoon.json'
-CACHE_IMAGE_NAME = 'tmp.jpg'
+CACHE_IMAGE_NAME = 'tmp.tif'
 CACHE_PROCESSED_IMAGE_NAME = 'tmp.bmp'
 CACHE_FINAL_IMAGE_NAME = 'tmp-display.bmp'
 
@@ -86,11 +86,12 @@ def process_dam_image():
     subprocess.run(
         ('convert',
         input_img_path,
-        '-resize', DISPLAY_DIMENSIONS_PX,
+        # Scale to fit the height, since that's the diameter of the round display mat
+        '-resize', f'x{DISPLAY_DIMENSIONS_PX[1]}',
         # Center the (square) moon image on a black canvas the size of the display
         '-background', 'black',
         '-gravity', 'Center',
-        '-extent', DISPLAY_DIMENSIONS_PX,
+        '-extent', '{}x{}'.format(*DISPLAY_DIMENSIONS_PX),
         # 'Gray' makes for a nice contrasty conversion to grayscale
         '-colorspace', 'Gray',
         # Stretch the lightest part of the image to white.
@@ -104,7 +105,7 @@ def process_dam_image():
 
 def annotate_dam_image(dam, dt: datetime, tz: tzinfo):
     mg = geometry.MoonGeometry(dt, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
-    half_dimensions = tuple(int(p)/2 for p in DISPLAY_DIMENSIONS_PX.split('x'))
+    half_dimensions = tuple(p//2 for p in DISPLAY_DIMENSIONS_PX)
     az_alt_draw_commands = []
 
     az_alt_draw_commands += annotate.draw_legend(dt, tz, mg)
@@ -153,6 +154,10 @@ if __name__ == '__main__':
     new_dam_image = dam['image']['url']
     logging.info(f'checking {new_dam_image} against {last_dam_image}')
     if new_dam_image != last_dam_image:
+        # Switch to a high-res image
+        # e.g. https://svs.gsfc.nasa.gov/vis/a000000/a005000/a005048/frames/730x730_1x1_30p/moon.3478.jpg
+        # to   https://svs.gsfc.nasa.gov/vis/a000000/a005000/a005048/frames/3840x2160_16x9_30p/plain/moon.3478.tif
+        new_dam_image = new_dam_image.replace('730x730_1x1_30p', '3840x2160_16x9_30p/plain').replace('.jpg', '.tif')
         logging.info('downloading new image')
         download_image(new_dam_image)
         process_dam_image()

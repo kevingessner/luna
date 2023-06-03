@@ -36,6 +36,7 @@ TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
 from datetime import datetime, timezone, tzinfo
 
 import annotate
+annotate.set_dimensions(*DISPLAY_DIMENSIONS_PX)
 import geometry
 
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
@@ -86,10 +87,13 @@ def process_dam_image():
     subprocess.run(
         ('convert',
         input_img_path,
-        # Scale to fit the height, since that's the diameter of the round display mat
-        '-resize', f'x{DISPLAY_DIMENSIONS_PX[1]}',
-        # Center the (square) moon image on a black canvas the size of the display
-        '-background', 'black',
+        # The moon image isn't always the same size: NASA scales it based on the apparent size of the moon at the given
+        # time.  We always want the moon to be the same size on the display, so trim to just the moon, then scale it to
+        # fit within the screen and within the ring of annotations.
+        '-trim',
+        '-resize', f'{annotate.azimuth_r1*2}x{annotate.azimuth_r1*2}^',
+        # Center the (square) moon image on a canvas the size of the display
+        '-background', '#111',
         '-gravity', 'Center',
         '-extent', '{}x{}'.format(*DISPLAY_DIMENSIONS_PX),
         # 'Gray' makes for a nice contrasty conversion to grayscale

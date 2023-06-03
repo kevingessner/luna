@@ -9,9 +9,15 @@ import geometry
 
 log = logging.getLogger(__name__)
 
-azimuth_r1, azimuth_r2 = 630, 700 # inner and outer radius of the azimuth line and text. TODO these are only suitable for the 1872x1404 screen
+azimuth_r1, azimuth_r2 = 630, 700 # inner and outer radius of the azimuth line and text; see set_dimensions
 indicator_r = 10 # radius of the altitude indicator dot
 color = '#aaa'
+
+def set_dimensions(display_w, display_h):
+    '''Adjust the radius of the ring of annotations for the display size.'''
+    global azimuth_r1, azimuth_r2
+    azimuth_r2 = min(display_w, display_h) / 2 - 2
+    azimuth_r1 = azimuth_r2 - 70
 
 def draw_legend(dt: datetime, tz: tzinfo, mg: geometry.MoonGeometry):
     return [
@@ -19,9 +25,9 @@ def draw_legend(dt: datetime, tz: tzinfo, mg: geometry.MoonGeometry):
         '-fill', color,
         '-pointsize', '40',
         '-gravity', 'SouthWest',
-        '-draw', f'''text 20,110 "{dt.astimezone(tz).strftime('%H:%M:%S')}"''',
-        '-draw', f'text 20,60 "Alt: {mg.altitude:0.1f}deg"',
-        '-draw', f'text 20,10 "Az: {mg.azimuth:0.1f}deg"',
+        '-draw', f'text 20,110 "Alt: {mg.altitude:0.1f}deg"',
+        '-draw', f'text 20,60 "Az: {mg.azimuth:0.1f}deg"',
+        '-draw', f'''text 20,10 "{dt.astimezone(tz).strftime('%Y-%m-%d %H:%M:%S %Z')}"''',
     ]
 
 def _lerp_altitude(altitude: float) -> float:

@@ -36,7 +36,6 @@ TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
 from datetime import datetime, timezone, tzinfo
 
 import annotate
-annotate.set_dimensions(*DISPLAY_DIMENSIONS_PX)
 import geometry
 
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
@@ -80,7 +79,7 @@ def download_image(img_url):
             log.info(f'downloading {img_url} to {img_path}')
             f.write(r.read())
 
-def process_dam_image():
+def process_dam_image(annot: annotate.Annotate):
     input_img_path = os.path.join(CACHE_DIR, CACHE_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
     log.info(f'processing to {output_img_path}')
@@ -91,7 +90,7 @@ def process_dam_image():
         # time.  We always want the moon to be the same size on the display, so trim to just the moon, then scale it to
         # fit within the screen and within the ring of annotations.
         '-trim',
-        '-resize', f'{annotate.azimuth_r1*2}x{annotate.azimuth_r1*2}^',
+        '-resize', f'{annot.azimuth_r1*2}x{annot.azimuth_r1*2}^',
         # Center the (square) moon image on a canvas the size of the display
         '-background', '#111',
         '-gravity', 'Center',
@@ -107,34 +106,12 @@ def process_dam_image():
     )
     log.info(f'processing complete {output_img_path}')
 
-def annotate_dam_image(dam, dt: datetime, tz: tzinfo):
-    mg = geometry.MoonGeometry(dt, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
-    half_dimensions = tuple(p//2 for p in DISPLAY_DIMENSIONS_PX)
-    az_alt_draw_commands = []
-
-    az_alt_draw_commands += annotate.draw_legend(dt, tz, mg)
-    az_alt_draw_commands += annotate.draw_indicator(half_dimensions, mg)
-
-    cardinal_radius = annotate.azimuth_r2 - 15
-    cardinal_skip_angle_delta = 4
-    # Draw the cardinal directions around the circle, south up.
-    # Don't draw one if the pointer will overlap it (i.e. it's within a few degrees).
-    if not (360 - cardinal_skip_angle_delta < mg.azimuth or mg.azimuth < cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_text('N', 0, 0, cardinal_radius)
-    if not (90 - cardinal_skip_angle_delta < mg.azimuth < 90 + cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_text('E', 270, -cardinal_radius, 0)
-    if not (180 - cardinal_skip_angle_delta < mg.azimuth < 180 + cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_text('S', 0, 0, -cardinal_radius)
-    if not (270 - cardinal_skip_angle_delta < mg.azimuth < 270 + cardinal_skip_angle_delta):
-        az_alt_draw_commands += annotate.draw_text('W', 90, cardinal_radius, 0)
-
-    az_alt_draw_commands += annotate.draw_moon_path(half_dimensions, dt, tz, mg)
-
+def annotate_dam_image(annot: annotate.Annotate):
     input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
     args = ('convert',
         input_img_path,
-        *az_alt_draw_commands,
+        *annot.draw_annotations(),
         output_img_path,
     )
     log.info(f'annotating to {output_img_path}:\n{shlex.join(args)}')
@@ -154,6 +131,10 @@ if __name__ == '__main__':
 
     utc_now = datetime.now(timezone.utc)
     dam = fetch_dialamoon(utc_now)
+
+    mg = geometry.MoonGeometry(utc_now, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
+    annot = annotate.Annotate(*DISPLAY_DIMENSIONS_PX, mg, TZ)
+
     last_dam_image = cached_dam_image()
     new_dam_image = dam['image']['url']
     logging.info(f'checking {new_dam_image} against {last_dam_image}')
@@ -164,9 +145,9 @@ if __name__ == '__main__':
         new_dam_image = new_dam_image.replace('730x730_1x1_30p', '3840x2160_16x9_30p/plain').replace('.jpg', '.tif')
         logging.info('downloading new image')
         download_image(new_dam_image)
-        process_dam_image()
+        process_dam_image(annot)
 
-    annotate_dam_image(dam, utc_now, TZ)
+    annotate_dam_image(annot)
     if len(sys.argv) > 1:
         display_dam_image(sys.argv[1].split(' '))
     cache_dam(dam)

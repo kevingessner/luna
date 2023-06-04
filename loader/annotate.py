@@ -104,7 +104,7 @@ class Annotate:
             f'line 0,{self.azimuth_r1},0,{self.azimuth_r2}',
         ]
         if self.mg.altitude > 0:
-            alt_lerp = self._lerp_altitude(mg.altitude)
+            alt_lerp = self._lerp_altitude(self.mg.altitude)
             indicator_draw_commands += [
                 'stroke-width 0',
                 f'translate 0,{alt_lerp}',

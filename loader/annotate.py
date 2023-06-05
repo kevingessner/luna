@@ -31,7 +31,7 @@ class Annotate:
 
     def draw_annotations(self):
         '''Returns a list of ImageMagick commands to draw all the annotations on the image.'''
-        return self._draw_legend() + self._draw_indicator() + self._draw_cardinal_directions() + self._draw_moon_path()
+        return self._draw_legend() + self._draw_grid() + self._draw_indicator() + self._draw_cardinal_directions() + self._draw_moon_path()
 
     def _lerp_altitude(self, altitude: float) -> float:
         '''Interpolate an altitude > 0 into the annulus between r1 and r2.'''
@@ -114,6 +114,20 @@ class Annotate:
                 f'circle 0,0,0,{self.indicator_r}',
             ]
         return ['-draw', ' '.join(indicator_draw_commands)]
+
+    def _draw_grid(self):
+        '''Returns ImageMagick commands to draw concentric rings of altitudes.'''
+        draw_commands = []
+        for a in (0, 30, 60, 90):
+            draw_commands += ['-draw', ' '.join([
+                f'stroke "#444"',
+                'fill transparent',
+                'stroke-width 1',
+                # Move the drawing origin to the center of the image (default is top left).
+                'translate {0},{1}'.format(*self.half_dimensions),
+                f'circle 0,0,0,{self._lerp_altitude(a)}',
+            ])]
+        return draw_commands
 
     def _draw_cardinal_directions(self):
         draw_commands = []

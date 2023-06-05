@@ -84,6 +84,9 @@ def dcos(n: float) -> float:
     '''math.cos on a value in degrees'''
     return math.cos(math.radians(n))
 
+def radians_to_hours(r: float) -> float:
+    return math.degrees(r) / 15
+
 def days_since_j2000(dt: datetime) -> float:
     '''Fractional days since the J2000 epoch.
 

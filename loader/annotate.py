@@ -21,8 +21,9 @@ class Annotate:
 
     def __init__(self, display_w: int, display_h: int, mg: geometry.MoonGeometry, display_tz: tzinfo):
         # Set the radius of the ring of annotations for the display size.
+        annotate_ring_width = 70
         self.azimuth_r2 = min(display_w, display_h) / 2 - 2
-        self.azimuth_r1 = self.azimuth_r2 - 70
+        self.azimuth_r1 = self.azimuth_r2 - annotate_ring_width
         self.dimensions = (display_w, display_h)
         self.half_dimensions = (display_w/2, display_h/2)
         self.mg = mg
@@ -34,7 +35,9 @@ class Annotate:
 
     def _lerp_altitude(self, altitude: float) -> float:
         '''Interpolate an altitude > 0 into the annulus between r1 and r2.'''
-        return (altitude / 90.0) * (self.azimuth_r2 - self.azimuth_r1 - 2 * self.indicator_r) + self.azimuth_r1 + self.indicator_r
+        outer = self.azimuth_r2 - self.indicator_r
+        inner = self.azimuth_r1 + self.indicator_r
+        return (altitude / 90.0) * (outer - inner) + inner
 
     def _draw_text(self, text: str, angle: int, x: int, y: int, text_gravity: str = 'center'):
         '''Returns ImageMagick draw commands for writing `text` tilted at `angle` at a point relative to the image center;
@@ -132,32 +135,7 @@ class Annotate:
         '''Returns draw commands for a curve of the moon's position for the current day.  Starts at the rise azimuth, curves
         through the zenith azimuth and altitude, then back to the set azimuth.'''
 
-        # Work in UTC for consistency.
-        tz = timezone.utc
-        dt = self.mg.dt
-        loc = astral.LocationInfo('', '', tz.tzname(dt), self.mg.latitude, self.mg.longitude)
-        pos = astral_moon.moon_position(geometry.days_since_j2000(dt))
-
-        try:
-            rise_dt = astral_moon.moonrise(loc.observer, dt, tz)
-        except ValueError:
-            rise_dt = None
-        if self.mg.altitude > 0: # moon is up
-            # Find the most-recent past moonrise, which may be yesterday.
-            if rise_dt is None or rise_dt > dt:
-                rise_dt = astral_moon.moonrise(loc.observer, dt + timedelta(days=1), tz)
-            log.info(f'most recent rise: {rise_dt}')
-        else: # moon is not up
-            # Find the next moonrise, which may be tomorrow.
-            if rise_dt is None or rise_dt < dt:
-                rise_dt = astral_moon.moonrise(loc.observer, dt + timedelta(days=1), tz)
-            log.info(f'next rise: {rise_dt}')
-
-        # Find the next moonset, which might be tomorrow.
-        set_dt = astral_moon.moonset(loc.observer, dt, tz)
-        if set_dt is None or set_dt < rise_dt:
-            set_dt = astral_moon.moonset(loc.observer, dt + timedelta(days=1), tz)
-        log.info(f'next set: {set_dt}')
+        (rise_dt, set_dt) = self._rise_set()
 
         # Interpolate every hour between rise and set; these will be the points of the curve.
         times = []
@@ -176,10 +154,9 @@ class Annotate:
             radius = self._lerp_altitude(altitude)
             return (-geometry.dsin(azimuth) * radius, geometry.dcos(azimuth) * radius)
         for t in times:
-            pos = astral_moon.moon_position(geometry.days_since_j2000(t.astimezone(tz)))
-            ra_hours = math.degrees(pos.right_ascension) / 15
-            pos_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, ra_hours, math.degrees(pos.declination))
-            log.info(f'mg {t}: alt {pos_mg.altitude:0.2f}, az {pos_mg.azimuth:0.2f}')
+            pos = astral_moon.moon_position(geometry.days_since_j2000(t))
+            pos_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(pos.right_ascension), math.degrees(pos.declination))
+            log.debug(f'mg {t}: alt {pos_mg.altitude:0.2f}, az {pos_mg.azimuth:0.2f}')
             if last_pos_mg is not None:
                 # Calculate the control point for the bezier curve, by interpolating the altitude and azimuth of the current
                 # and previous points.  Simple interpolation by averaging the altitude and the azimuth; empirically,
@@ -209,3 +186,39 @@ class Annotate:
             *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), 0, first_point[0] - 10, first_point[1], 'west'),
             *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), 0, points[-1][0] + 10, points[-1][1], 'east'),
         ]
+
+    def _rise_set(self):
+        '''Returns a tuple of datetimes of the moon rise and moon set to be displayed: the most-recent rise if the moon
+        is up at `self.mg.dt`, otherwise the next rise; and the set following that rise.'''
+        # Work in UTC for consistency.
+        tz = timezone.utc
+        dt = self.mg.dt.astimezone(tz)
+        loc = astral.LocationInfo('', '', tz.tzname(dt), self.mg.latitude, self.mg.longitude)
+
+        try:
+            rise_dt = astral_moon.moonrise(loc.observer, dt, tz)
+        except ValueError:
+            # astral throws in some cases when there is no rise on a given date.
+            rise_dt = None
+        if self.mg.altitude > 0: # moon is up
+            # Find the most-recent past moonrise, which may be yesterday.
+            if rise_dt is None or rise_dt > dt:
+                rise_dt = astral_moon.moonrise(loc.observer, dt - timedelta(days=1), tz)
+            log.info(f'most recent rise: {rise_dt}')
+        else: # moon is not up
+            # Find the next moonrise, which may be tomorrow.
+            if rise_dt is None or rise_dt < dt:
+                rise_dt = astral_moon.moonrise(loc.observer, dt + timedelta(days=1), tz)
+            log.info(f'next rise: {rise_dt}')
+
+        # Find the following moonset, which might be the day after moonrise.
+        try:
+            set_dt = astral_moon.moonset(loc.observer, rise_dt, tz)
+        except ValueError:
+            # astral throws in some cases when there is no set on a given date.
+            set_dt = None
+        if set_dt is None or set_dt < rise_dt:
+            set_dt = astral_moon.moonset(loc.observer, rise_dt + timedelta(days=1), tz)
+        log.info(f'next set: {set_dt}')
+
+        return (rise_dt, set_dt)

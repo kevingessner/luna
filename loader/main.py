@@ -33,12 +33,11 @@ try:
 except:
     from backports import zoneinfo
 TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
-from datetime import datetime, timezone, tzinfo
+from datetime import datetime, timedelta, timezone, tzinfo
 
 import annotate
 import geometry
 
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 log = logging.getLogger(__name__)
 
 def fetch_dialamoon(dt: datetime):
@@ -127,6 +126,8 @@ def display_dam_image(args):
     subprocess.run(args, check=True, timeout=30)
 
 if __name__ == '__main__':
+    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
+
     os.makedirs(CACHE_DIR, exist_ok=True)
 
     utc_now = datetime.now(timezone.utc)

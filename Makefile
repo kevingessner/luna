@@ -45,4 +45,8 @@ uninstall:
 	sudo systemctl stop luna || true
 	sudo systemctl disable luna || true
 
+test: loader/*.py | loader
+	cd loader && $(PYTHON_VENV)/bin/python -m unittest -v $(^F)
+	cd loader && $(PYTHON_VENV)/bin/python -m doctest -v $(^F)
+
 FORCE:

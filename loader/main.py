@@ -1,6 +1,10 @@
-#!/usr/bin/env venv/bin/python
+#!/usr/bin/env bash
+"exec" "`dirname $0`/venv/bin/python" "$0" "$@"
+# ^ line following shebang is magic, and results in this script running with the venv's python no matter how it is
+# invoked (e.g. `./main.py`, `./loader/main.py`, `venv/bin/python main.py`).  It's a noop in python (just strings!)
+# but a command in bash to replace the interpreter with the venv python.
 
-'''Downloads the current moon image from NASA's dial-a-moon API,
+__doc__ = '''Downloads the current moon image from NASA's dial-a-moon API,
 formats it for display on the e-paper screen, then (optionally) displays it.
 
 Pass the full e-paper display command as the first argument to trigger the display;

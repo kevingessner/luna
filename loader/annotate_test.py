@@ -124,11 +124,11 @@ class AnnotateTest(unittest.TestCase):
         pos = astral_moon.moon_position(geometry.days_since_j2000(dt))
         mg = geometry.MoonGeometry(dt, 40, -70, geometry.radians_to_hours(pos.right_ascension), math.degrees(pos.declination))
         a = annotate.Annotate(1872, 1404, mg, timezone.utc)
-        self.assertEqual(630, a.azimuth_r1)
-        self.assertEqual(700, a.azimuth_r2)
-        self.assertEqual(640, a._lerp_altitude(0))
-        self.assertEqual(690, a._lerp_altitude(90))
-        self.assertEqual(665, a._lerp_altitude(45))
+        self.assertEqual(632, a.azimuth_r1)
+        self.assertEqual(702, a.azimuth_r2)
+        self.assertEqual(642, a._lerp_altitude(0))
+        self.assertEqual(692, a._lerp_altitude(90))
+        self.assertEqual(667, a._lerp_altitude(45))
 
 if __name__ == '__main__':
     unittest.main()

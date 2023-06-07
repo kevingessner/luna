@@ -94,6 +94,7 @@ def process_dam_image(annot: annotate.Annotate):
         # fit within the screen and within the ring of annotations.
         '-trim',
         '-resize', f'{annot.azimuth_r1*2}x{annot.azimuth_r1*2}^',
+        '-contrast',
         # Center the (square) moon image on a canvas the size of the display
         '-background', '#111',
         '-gravity', 'Center',

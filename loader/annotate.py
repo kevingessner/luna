@@ -14,7 +14,7 @@ class Annotate:
     azimuth_r1: int
     azimuth_r2: int # inner and outer radius of the azimuth line and text
     indicator_r = 10 # radius of the altitude indicator dot
-    color = '#aaa'
+    color = '#bbb'
     display_dimensions = None
     mg: geometry.MoonGeometry = None
     display_tz: tzinfo
@@ -22,7 +22,7 @@ class Annotate:
     def __init__(self, display_w: int, display_h: int, mg: geometry.MoonGeometry, display_tz: tzinfo):
         # Set the radius of the ring of annotations for the display size.
         annotate_ring_width = 70
-        self.azimuth_r2 = min(display_w, display_h) / 2 - 2
+        self.azimuth_r2 = min(display_w, display_h) / 2 - 0
         self.azimuth_r1 = self.azimuth_r2 - annotate_ring_width
         self.dimensions = (display_w, display_h)
         self.half_dimensions = (display_w/2, display_h/2)
@@ -43,33 +43,38 @@ class Annotate:
         '''Returns ImageMagick draw commands for writing `text` tilted at `angle` at a point relative to the image center;
         positive X to the right and positive Y down.
 
-        text_gravity: align the text relative to the point. default is to center the text at the point; 'west' pushes the
-        text left, so the right edge is at the point, etc.'''
+        text_gravity: how align the text relative to the point. default is to center the text at the point; 'west' pushes the
+        text left, so the right edge is at the point, etc.  The direction is always relative to the text's upright direction, not the rotated direction!'''
         # Text drawing with -draw and -annotate is broken in the ImageMagick 6.9 that comes with Raspbian.
         # Certain rotation and translation combinations are misplaced entirely,
         # e.g. `gravity center rotate 90 translate 0,600` for East is drawn incorrectly at the image center.
         # Instead, generate each label as a subimage with the rotated text,
         # and composite it into the parent image at the correct point for the angle and radius.
+        bg_color = 'transparent'
+        #bg_color = 'rgba(100,0,0,0.5)'
         return [
             # Subimage commands within ()
             '(',
                 # Any size bigger than the bounding box of the largest label.
                 '-size', '{s}x{s}'.format(s=300),
-                'xc:transparent',
-                '-background', 'transparent',
+                f'xc:{bg_color}',
+                '-background', bg_color,
                 '-fill', self.color, '-font', 'Helvetica', '-pointsize', '30',
-                # Draw the text angled, at the center of the subimage, rotated appropriately.
+                # Draw the text at the center of the subimage
                 '-gravity', 'center',
-                '-annotate', '{angle:0.1f}x{angle:0.1f}+0+0'.format(angle=angle), text,
+                '-annotate', '0x0+0+0', text,
                 # Trim all background pixels, cropping the image to just the text.  Then scale by 2x;
                 # this respects gravity, so the text will be now aligned to the correct edge of the image
                 # for the gravity.  Now when the subimage is placed by its center, the text is aligned relative
-                # to that center point. (Change the two "transparent"s above to an opaque color to see what's
+                # to that center point. (Change `bg_color` above to an opaque color to see what's
                 # happening more clearly.)
                 '-trim',
                 '+repage',
                 '-gravity', text_gravity,
                 '-extent', '200%',
+                # Now rotate around the center point
+                '-rotate', f'{angle:0.1f}',
+                '+repage',
             ')',
             # Position the center of the text image at the given position; remember positive Y is down, and ImageMagick
             # geometry requires explicit `+` and `-`.
@@ -117,10 +122,18 @@ class Annotate:
 
     def _draw_grid(self):
         '''Returns ImageMagick commands to draw concentric rings of altitudes.'''
-        draw_commands = []
+        draw_commands = [
+            # Black line immediately around moon image to increase apparent contrast.
+            '-draw', 'translate {0},{1} stroke black fill transparent stroke-width 1 circle 0,0,0,{2}'.format(
+                self.half_dimensions[0], self.half_dimensions[1], self.azimuth_r1),
+            # Wide white band where the mat starts, for easier development on unmatted screens.
+            '-draw', 'translate {0},{1} stroke white fill transparent stroke-width {2} circle 0,0,0,{3}'.format(
+                self.half_dimensions[0], self.half_dimensions[1], stroke_width := 20, min(*self.half_dimensions) + stroke_width / 2),
+        ]
+        # Rings at the radius of reference altitudes.
         for a in (0, 30, 60, 90):
             draw_commands += ['-draw', ' '.join([
-                f'stroke "#444"',
+                f'stroke "#555"',
                 'fill transparent',
                 'stroke-width 1',
                 # Move the drawing origin to the center of the image (default is top left).
@@ -131,10 +144,12 @@ class Annotate:
 
     def _draw_cardinal_directions(self):
         draw_commands = []
-        cardinal_radius = self.azimuth_r2 - 15
+        cardinal_radius = (self.azimuth_r2 + self.azimuth_r1) / 2
         cardinal_skip_angle_delta = 4
         # Draw the cardinal directions around the circle, south up.
         # Don't draw one if the pointer will overlap it (i.e. it's within a few degrees).
+        # Text alignment is relative to the unrotated text, so push E/S/W away from the moon 'upward',
+        # and N away from the moon 'downward'.
         if not (360 - cardinal_skip_angle_delta < self.mg.azimuth or self.mg.azimuth < cardinal_skip_angle_delta):
             draw_commands += self._draw_text('N', 0, 0, cardinal_radius)
         if not (90 - cardinal_skip_angle_delta < self.mg.azimuth < 90 + cardinal_skip_angle_delta):
@@ -184,6 +199,10 @@ class Annotate:
             last_pos_mg = pos_mg
         first_point = points.pop(0)
 
+        rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))
+        rise_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
+        set_pos = astral_moon.moon_position(geometry.days_since_j2000(set_dt))
+        set_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
         # Draw a curve for the moon's path between the calcuated rise and set.
         return [
             '-draw', ' '.join([
@@ -197,8 +216,8 @@ class Annotate:
                 # then to (x3, y3) with control points (cx3, cy3) and (cx4, cy4), etc.
                 f'path "M {first_point[0]:.1f} {first_point[1]:.1f} C {" ".join("%.1f" % coord for p in points for coord in p)}"',
             ]),
-            *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), 0, first_point[0] - 10, first_point[1], 'west'),
-            *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), 0, points[-1][0] + 10, points[-1][1], 'east'),
+            *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), 180 - rise_mg.azimuth, first_point[0] - 10, first_point[1], 'north'),
+            *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), set_mg.azimuth + 180, points[-1][0] + 10, points[-1][1], 'north'),
         ]
 
     def _rise_set(self):

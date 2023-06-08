@@ -8,7 +8,7 @@ Type=idle
 User=login
 ExecStart=$DIR/loader/venv/bin/python $DIR/loader/main.py "sudo $DIR/waveshare/bin/epd $VCOM 1"
 Restart=always
-RestartSec=60
+RestartSec=300
 
 [Install]
 WantedBy=multi-user.target

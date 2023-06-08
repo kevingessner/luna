@@ -135,7 +135,7 @@ if __name__ == '__main__':
 
     os.makedirs(CACHE_DIR, exist_ok=True)
 
-    utc_now = datetime.now(timezone.utc)
+    utc_now = datetime.now(timezone.utc) - timedelta(hours=0)
     dam = fetch_dialamoon(utc_now)
 
     mg = geometry.MoonGeometry(utc_now, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])

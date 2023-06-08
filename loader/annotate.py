@@ -102,10 +102,11 @@ class Annotate:
         # The altitude is mapped from [-90, 90] to [r1, r2],
         # such that values <= 0 are not drawn (moon not visible)
         # and values > 0 are linearly interpolated to [r1, r2], accounting for the radius of the indicator
+        stroke_width = 3
         indicator_draw_commands = [
             f'stroke "{self.color}"',
             f'fill "{self.color}"',
-            'stroke-width 3',
+            f'stroke-width {stroke_width}',
             # Move the drawing origin to the center of the image (default is top left).
             'translate {0},{1}'.format(*self.half_dimensions),
             f'rotate {self.mg.azimuth:0.1f}',
@@ -118,7 +119,32 @@ class Annotate:
                 f'translate 0,{alt_lerp}',
                 f'circle 0,0,0,{self.indicator_r}',
             ]
-        return ['-draw', ' '.join(indicator_draw_commands)]
+        else:
+            alt_lerp = self._lerp_altitude(45)
+
+        # Place the current time across the indicator line, at the dot if it's drawn or else centered.
+        display_dt = self.mg.dt.astimezone(self.display_tz)
+        text_rotate = self.mg.azimuth
+        text_x = -geometry.dsin(self.mg.azimuth) * alt_lerp
+        text_y = geometry.dcos(self.mg.azimuth) * alt_lerp
+        # Move the text horizontally (relative to its baseline, so angled on the canvas) by enough to avoid the
+        # indicator dot/line (plus a margin).
+        text_shift = (self.indicator_r if self.mg.altitude > 0 else stroke_width) + 1
+        text_shift_x = geometry.dcos(self.mg.azimuth) * text_shift
+        text_shift_y = geometry.dsin(self.mg.azimuth) * text_shift
+        # If drawing in the top half (from E to S to W), flip the text for upright reading.  Must invert the shifts,
+        # too.
+        if 90 <= self.mg.azimuth <= 270:
+            text_rotate += 180
+            text_shift_x = -text_shift_x
+            text_shift_y = -text_shift_y
+
+        return [
+            '-draw', ' '.join(indicator_draw_commands),
+            # Hours to the left of the point, minutes to the right.
+            *self._draw_text(display_dt.strftime('%H'), text_rotate, text_x - text_shift_x, text_y - text_shift_y, 'west'),
+            *self._draw_text(display_dt.strftime('%M'), text_rotate, text_x + text_shift_x, text_y + text_shift_y, 'east'),
+        ]
 
     def _draw_grid(self):
         '''Returns ImageMagick commands to draw concentric rings of altitudes.'''

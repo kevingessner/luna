@@ -192,9 +192,9 @@ class Annotate:
 
         (rise_dt, set_dt) = self._rise_set()
 
-        # Interpolate every hour between rise and set; these will be the points of the curve.
+        # Interpolate regularly between rise and set; these will be the knots (points) of the curve.
         times = []
-        step = timedelta(hours=1)
+        step = timedelta(hours=0.5)
         next_dt = rise_dt
         while next_dt < set_dt:
             times.append(next_dt)
@@ -204,7 +204,6 @@ class Annotate:
         # Turn each time into a point for the moon's position at that time.  The rise will be the first point and the set
         # will be the last, with a point for every hour in between.
         points = []
-        last_pos_mg = None
         def point_for_geometry(altitude: float, azimuth: float):
             radius = self._lerp_altitude(altitude)
             return (-geometry.dsin(azimuth) * radius, geometry.dcos(azimuth) * radius)
@@ -212,17 +211,12 @@ class Annotate:
             pos = astral_moon.moon_position(geometry.days_since_j2000(t))
             pos_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(pos.right_ascension), math.degrees(pos.declination))
             log.debug(f'mg {t}: alt {pos_mg.altitude:0.2f}, az {pos_mg.azimuth:0.2f}')
-            if last_pos_mg is not None:
-                # Calculate the control point for the bezier curve, by interpolating the altitude and azimuth of the current
-                # and previous points.  Simple interpolation by averaging the altitude and the azimuth; empirically,
-                # stretching the altitude out a bit makes for a smoother curve.
-                control_point = point_for_geometry(((last_pos_mg.altitude + pos_mg.altitude) / 2) * 1.15, (last_pos_mg.azimuth + pos_mg.azimuth) / 2)
-                # The control point will be used twice (for both the previous point and the next point),
-                # so it needs to be added twice in the coordinates list.
-                points.append(control_point)
-                points.append(control_point)
             points.append(point_for_geometry(pos_mg.altitude, pos_mg.azimuth))
-            last_pos_mg = pos_mg
+
+        points = _interpolate_control_points(points)
+        debug_knots = points[0::3]
+        debug_control_points_a = points[2:-2:3]
+        debug_control_points_b = points[4:-4:3]
         first_point = points.pop(0)
 
         rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))
@@ -241,6 +235,12 @@ class Annotate:
                 # Start at (x1, y1); smoothly curve to (x2, y2) with control points (cx1, cy1) and (cx2, cy2),
                 # then to (x3, y3) with control points (cx3, cy3) and (cx4, cy4), etc.
                 f'path "M {first_point[0]:.1f} {first_point[1]:.1f} C {" ".join("%.1f" % coord for p in points for coord in p)}"',
+                # Code to help debug arc drawing: uncomment to draw knots (red) and control points/lines (blue) of the curve
+                #'stroke blue',
+                #*[f'circle {p[0]:.1f},{p[1]:.1f},{p[0]:.1f},{p[1]+3:.1f}' for p in debug_control_points_a + debug_control_points_b],
+                #*[f'line {p1[0]:.1f},{p1[1]:.1f},{p2[0]:.1f},{p2[1]:.1f}' for (p1, p2) in zip(debug_control_points_a, debug_control_points_b)],
+                #f'stroke red',
+                #*[f'circle {p[0]:.1f},{p[1]:.1f},{p[0]:.1f},{p[1]+3:.1f}' for p in debug_knots],
             ]),
             *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), rise_mg.azimuth + 180, first_point[0] - 10, first_point[1], 'north'),
             *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), set_mg.azimuth + 180, points[-1][0] + 10, points[-1][1], 'north'),
@@ -281,3 +281,29 @@ class Annotate:
         log.info(f'next set: {set_dt}')
 
         return (rise_dt, set_dt)
+
+def _interpolate_control_points(points, k = 0.2):
+    '''Given a list of points, returns those points with Bezier control points interpolated.
+
+    Each input point is included in the output, with a new point before and a new point after that are the control
+    points of a Bezier curve continuing through the point (except the first and last points, which have only a single
+    control point after and before, respectively).
+
+    The control points are interpolated by a linear regression along the line between the preceding and following points.
+    The parameter `k` controls the strength of that regression; i.e. how far the control points are from the point.
+    '''
+    assert len(points) > 2
+    # Start with the initial point; it is its own control point.
+    interp_points = [points[0], points[0]]
+    # For each point except the first and last...
+    for i in range(1, len(points) - 1):
+        # Find the previous, current, and next points
+        pp, p, np = points[i - 1], points[i], points[i + 1]
+        # Calculate the straight-line vector between the previous and next points
+        dp = (np[0] - pp[0], np[1] - pp[1])
+        # Calculate the two control points by adding a portion of that vector to the point, in each direction
+        pcp, ncp = (p[0] - dp[0] * k, p[1] - dp[1] * k), (p[0] + dp[0] * k, p[1] + dp[1] * k)
+        interp_points += [pcp, p, ncp]
+    # End with the final point; it is its own control point.
+    interp_points += [points[-1], points[-1]]
+    return interp_points

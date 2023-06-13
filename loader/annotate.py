@@ -226,9 +226,9 @@ class Annotate:
         first_point = points.pop(0)
 
         rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))
-        rise_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
+        rise_mg = geometry.MoonGeometry(rise_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
         set_pos = astral_moon.moon_position(geometry.days_since_j2000(set_dt))
-        set_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
+        set_mg = geometry.MoonGeometry(set_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
         # Draw a curve for the moon's path between the calcuated rise and set.
         return [
             '-draw', ' '.join([
@@ -242,7 +242,7 @@ class Annotate:
                 # then to (x3, y3) with control points (cx3, cy3) and (cx4, cy4), etc.
                 f'path "M {first_point[0]:.1f} {first_point[1]:.1f} C {" ".join("%.1f" % coord for p in points for coord in p)}"',
             ]),
-            *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), 180 - rise_mg.azimuth, first_point[0] - 10, first_point[1], 'north'),
+            *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), rise_mg.azimuth + 180, first_point[0] - 10, first_point[1], 'north'),
             *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), set_mg.azimuth + 180, points[-1][0] + 10, points[-1][1], 'north'),
         ]
 

@@ -30,6 +30,7 @@ import shlex
 import subprocess
 import sys
 import time
+import traceback
 import urllib.request
 try:
     # Only on Python 3.9+, but not critical
@@ -40,6 +41,7 @@ TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
 from datetime import datetime, timedelta, timezone, tzinfo
 
 import annotate
+import debug
 import geometry
 
 log = logging.getLogger(__name__)
@@ -136,24 +138,33 @@ if __name__ == '__main__':
     os.makedirs(CACHE_DIR, exist_ok=True)
 
     utc_now = datetime.now(timezone.utc) - timedelta(hours=0)
-    dam = fetch_dialamoon(utc_now)
+    success = False
+    try:
+        dam = fetch_dialamoon(utc_now)
 
-    mg = geometry.MoonGeometry(utc_now, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
-    annot = annotate.Annotate(*DISPLAY_DIMENSIONS_PX, mg, TZ)
+        mg = geometry.MoonGeometry(utc_now, LATITUDE, LONGITUDE, moon_ra=dam['j2000_ra'], moon_dec=dam['j2000_dec'])
+        annot = annotate.Annotate(*DISPLAY_DIMENSIONS_PX, mg, TZ)
 
-    last_dam_image = cached_dam_image()
-    new_dam_image = dam['image']['url']
-    logging.info(f'checking {new_dam_image} against {last_dam_image}')
-    if new_dam_image != last_dam_image:
-        # Switch to a high-res image
-        # e.g. https://svs.gsfc.nasa.gov/vis/a000000/a005000/a005048/frames/730x730_1x1_30p/moon.3478.jpg
-        # to   https://svs.gsfc.nasa.gov/vis/a000000/a005000/a005048/frames/3840x2160_16x9_30p/plain/moon.3478.tif
-        new_dam_image = new_dam_image.replace('730x730_1x1_30p', '3840x2160_16x9_30p/plain').replace('.jpg', '.tif')
-        logging.info('downloading new image')
-        download_image(new_dam_image)
-        process_dam_image(annot)
+        last_dam_image = cached_dam_image()
+        new_dam_image = dam['image']['url']
+        logging.info(f'checking {new_dam_image} against {last_dam_image}')
+        if new_dam_image != last_dam_image:
+            # Switch to a high-res image
+            # e.g. https://svs.gsfc.nasa.gov/vis/a000000/a005000/a005048/frames/730x730_1x1_30p/moon.3478.jpg
+            # to   https://svs.gsfc.nasa.gov/vis/a000000/a005000/a005048/frames/3840x2160_16x9_30p/plain/moon.3478.tif
+            new_dam_image = new_dam_image.replace('730x730_1x1_30p', '3840x2160_16x9_30p/plain').replace('.jpg', '.tif')
+            logging.info('downloading new image')
+            download_image(new_dam_image)
+            process_dam_image(annot)
 
-    annotate_dam_image(annot)
+        annotate_dam_image(annot)
+        success = True
+    except:
+        output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
+        debug.produce_debug_image(DISPLAY_DIMENSIONS_PX, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False)))
+
     if len(sys.argv) > 1:
         display_dam_image(sys.argv[1].split(' '))
-    cache_dam(dam)
+
+    if success:
+        cache_dam(dam)

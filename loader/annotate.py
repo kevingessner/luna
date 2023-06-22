@@ -221,8 +221,22 @@ class Annotate:
 
         rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))
         rise_mg = geometry.MoonGeometry(rise_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
+        # If drawing in the top half (from E to S to W), flip the text for upright reading.  Must invert the gravity, too.
+        if 90 <= rise_mg.azimuth <= 270:
+            rise_text_rotate = 180
+            rise_text_gravity = 'north'
+        else:
+            rise_text_rotate = 0
+            rise_text_gravity = 'south'
         set_pos = astral_moon.moon_position(geometry.days_since_j2000(set_dt))
         set_mg = geometry.MoonGeometry(set_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
+        if 90 <= set_mg.azimuth <= 270:
+            set_text_rotate = 180
+            set_text_gravity = 'north'
+        else:
+            set_text_rotate = 0
+            set_text_gravity = 'south'
+
         # Draw a curve for the moon's path between the calcuated rise and set.
         return [
             '-draw', ' '.join([
@@ -242,8 +256,8 @@ class Annotate:
                 #f'stroke red',
                 #*[f'circle {p[0]:.1f},{p[1]:.1f},{p[0]:.1f},{p[1]+3:.1f}' for p in debug_knots],
             ]),
-            *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), rise_mg.azimuth + 180, first_point[0] - 10, first_point[1], 'north'),
-            *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), set_mg.azimuth + 180, points[-1][0] + 10, points[-1][1], 'north'),
+            *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), rise_mg.azimuth + rise_text_rotate, first_point[0] - 10, first_point[1], rise_text_gravity),
+            *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), set_mg.azimuth + set_text_rotate, points[-1][0] + 10, points[-1][1], set_text_gravity),
         ]
 
     def _rise_set(self):

@@ -196,7 +196,7 @@ class Annotate:
         '''Returns draw commands for a curve of the moon's position for the current day.  Starts at the rise azimuth, curves
         through the zenith azimuth and altitude, then back to the set azimuth.'''
 
-        (rise_mg, set_mg) = self._rise_set()
+        (rise_mg, set_mg) = self._rise_set
 
         # Interpolate regularly between rise and set; these will be the knots (points) of the curve.
         times = []
@@ -270,6 +270,7 @@ class Annotate:
 
         return draw_commands
 
+    @cached_property
     def _rise_set(self) -> typing.Tuple[geometry.MoonGeometry, geometry.MoonGeometry]:
         '''Returns a tuple of MoonGeometry of the moon rise and moon set to be displayed: the most-recent rise if the moon
         is up at `self.mg.dt`, otherwise the next rise; and the set following that rise.'''

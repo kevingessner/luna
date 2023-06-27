@@ -1,6 +1,8 @@
 import logging
 import math
+import typing
 from datetime import datetime, timedelta, timezone, tzinfo
+from functools import cached_property
 
 import astral
 import astral.moon as astral_moon
@@ -38,6 +40,12 @@ class Annotate:
         outer = self.azimuth_r2 - self.indicator_r
         inner = self.azimuth_r1 + self.indicator_r
         return (altitude / 90.0) * (outer - inner) + inner
+
+    def _can_draw_text_at_azimuth(self, az: float, *mgs: geometry.MoonGeometry, delta: float = 4) -> bool:
+        '''Check if the given azimuth is "too close" to that of any of the geometries.'''
+        if not mgs:
+            mgs = (self.mg, *self._rise_set)
+        return _can_draw_text_at_azimuth(az, delta, [mg.azimuth for mg in mgs])
 
     def _draw_text(self, text: str, angle: int, x: int, y: int, text_gravity: str = 'center'):
         '''Returns ImageMagick draw commands for writing `text` tilted at `angle` at a point relative to the image center;
@@ -171,18 +179,16 @@ class Annotate:
     def _draw_cardinal_directions(self):
         draw_commands = []
         cardinal_radius = (self.azimuth_r2 + self.azimuth_r1) / 2
-        cardinal_skip_angle_delta = 4
         # Draw the cardinal directions around the circle, south up.
-        # Don't draw one if the pointer will overlap it (i.e. it's within a few degrees).
         # Text alignment is relative to the unrotated text, so push E/S/W away from the moon 'upward',
         # and N away from the moon 'downward'.
-        if not (360 - cardinal_skip_angle_delta < self.mg.azimuth or self.mg.azimuth < cardinal_skip_angle_delta):
+        if self._can_draw_text_at_azimuth(0):
             draw_commands += self._draw_text('N', 0, 0, cardinal_radius)
-        if not (90 - cardinal_skip_angle_delta < self.mg.azimuth < 90 + cardinal_skip_angle_delta):
+        if self._can_draw_text_at_azimuth(90):
             draw_commands += self._draw_text('E', 270, -cardinal_radius, 0)
-        if not (180 - cardinal_skip_angle_delta < self.mg.azimuth < 180 + cardinal_skip_angle_delta):
+        if self._can_draw_text_at_azimuth(180):
             draw_commands += self._draw_text('S', 0, 0, -cardinal_radius)
-        if not (270 - cardinal_skip_angle_delta < self.mg.azimuth < 270 + cardinal_skip_angle_delta):
+        if self._can_draw_text_at_azimuth(270):
             draw_commands += self._draw_text('W', 90, cardinal_radius, 0)
         return draw_commands
 
@@ -190,16 +196,16 @@ class Annotate:
         '''Returns draw commands for a curve of the moon's position for the current day.  Starts at the rise azimuth, curves
         through the zenith azimuth and altitude, then back to the set azimuth.'''
 
-        (rise_dt, set_dt) = self._rise_set()
+        (rise_mg, set_mg) = self._rise_set()
 
         # Interpolate regularly between rise and set; these will be the knots (points) of the curve.
         times = []
         step = timedelta(hours=0.5)
-        next_dt = rise_dt
-        while next_dt < set_dt:
+        next_dt = rise_mg.dt
+        while next_dt < set_mg.dt:
             times.append(next_dt)
             next_dt += step
-        times.append(set_dt)
+        times.append(set_mg.dt)
 
         # Turn each time into a point for the moon's position at that time.  The rise will be the first point and the set
         # will be the last, with a point for every hour in between.
@@ -219,26 +225,8 @@ class Annotate:
         debug_control_points_b = points[4:-4:3]
         first_point = points.pop(0)
 
-        rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))
-        rise_mg = geometry.MoonGeometry(rise_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
-        # If drawing in the top half (from E to S to W), flip the text for upright reading.  Must invert the gravity, too.
-        if 90 <= rise_mg.azimuth <= 270:
-            rise_text_rotate = 180
-            rise_text_gravity = 'north'
-        else:
-            rise_text_rotate = 0
-            rise_text_gravity = 'south'
-        set_pos = astral_moon.moon_position(geometry.days_since_j2000(set_dt))
-        set_mg = geometry.MoonGeometry(set_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
-        if 90 <= set_mg.azimuth <= 270:
-            set_text_rotate = 180
-            set_text_gravity = 'north'
-        else:
-            set_text_rotate = 0
-            set_text_gravity = 'south'
-
         # Draw a curve for the moon's path between the calcuated rise and set.
-        return [
+        draw_commands = [
             '-draw', ' '.join([
                 'fill transparent',
                 f'stroke {self.color}',
@@ -256,12 +244,34 @@ class Annotate:
                 #f'stroke red',
                 #*[f'circle {p[0]:.1f},{p[1]:.1f},{p[0]:.1f},{p[1]+3:.1f}' for p in debug_knots],
             ]),
-            *self._draw_text(rise_dt.astimezone(self.display_tz).strftime('%H:%M'), rise_mg.azimuth + rise_text_rotate, first_point[0] - 10, first_point[1], rise_text_gravity),
-            *self._draw_text(set_dt.astimezone(self.display_tz).strftime('%H:%M'), set_mg.azimuth + set_text_rotate, points[-1][0] + 10, points[-1][1], set_text_gravity),
         ]
 
-    def _rise_set(self):
-        '''Returns a tuple of datetimes of the moon rise and moon set to be displayed: the most-recent rise if the moon
+        text_width_delta = 8 # Enough degrees to avoid overlapping time text
+        # Draw the rise time, unless it conflicts with the indicator
+        if self._can_draw_text_at_azimuth(rise_mg.azimuth, self.mg, delta=text_width_delta):
+            # If drawing in the top half (from E to S to W), flip the text for upright reading.  Must invert the gravity, too.
+            if 90 <= rise_mg.azimuth <= 270:
+                rise_text_rotate = 180
+                rise_text_gravity = 'north'
+            else:
+                rise_text_rotate = 0
+                rise_text_gravity = 'south'
+            draw_commands.extend(self._draw_text(rise_mg.dt.astimezone(self.display_tz).strftime('%H:%M'), rise_mg.azimuth + rise_text_rotate, first_point[0] - 10, first_point[1], rise_text_gravity))
+
+        # Draw the set time, unless it conflicts with the indicator
+        if self._can_draw_text_at_azimuth(set_mg.azimuth, self.mg, delta=text_width_delta):
+            if 90 <= set_mg.azimuth <= 270:
+                set_text_rotate = 180
+                set_text_gravity = 'north'
+            else:
+                set_text_rotate = 0
+                set_text_gravity = 'south'
+            draw_commands += self._draw_text(set_mg.dt.astimezone(self.display_tz).strftime('%H:%M'), set_mg.azimuth + set_text_rotate, points[-1][0] + 10, points[-1][1], set_text_gravity)
+
+        return draw_commands
+
+    def _rise_set(self) -> typing.Tuple[geometry.MoonGeometry, geometry.MoonGeometry]:
+        '''Returns a tuple of MoonGeometry of the moon rise and moon set to be displayed: the most-recent rise if the moon
         is up at `self.mg.dt`, otherwise the next rise; and the set following that rise.'''
         # Work in UTC for consistency.
         tz = timezone.utc
@@ -294,7 +304,12 @@ class Annotate:
             set_dt = astral_moon.moonset(loc.observer, rise_dt + timedelta(days=1), tz)
         log.info(f'next set: {set_dt}')
 
-        return (rise_dt, set_dt)
+        rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))
+        rise_mg = geometry.MoonGeometry(rise_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
+        set_pos = astral_moon.moon_position(geometry.days_since_j2000(set_dt))
+        set_mg = geometry.MoonGeometry(set_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
+
+        return (rise_mg, set_mg)
 
 def _interpolate_control_points(points, k = 0.2):
     '''Given a list of points, returns those points with Bezier control points interpolated.
@@ -321,3 +336,49 @@ def _interpolate_control_points(points, k = 0.2):
     # End with the final point; it is its own control point.
     interp_points += [points[-1], points[-1]]
     return interp_points
+
+def _can_draw_text_at_azimuth(az: float, delta: float, check_azs: typing.List[float]) -> bool:
+    '''
+    Returns True if `az` is within `delta` of any of `check_azs`, accounting for wrap around 360 to 0.
+
+    >>> _can_draw_text_at_azimuth(0, 3, [0])
+    False
+    >>> _can_draw_text_at_azimuth(0, 3, [359, 60])
+    False
+    >>> _can_draw_text_at_azimuth(0, 3, [2])
+    False
+    >>> _can_draw_text_at_azimuth(0, 3, [357])
+    True
+    >>> _can_draw_text_at_azimuth(0, 3, [3])
+    True
+
+    >>> _can_draw_text_at_azimuth(359, 5, [0])
+    False
+    >>> _can_draw_text_at_azimuth(359, 5, [359, 60])
+    False
+    >>> _can_draw_text_at_azimuth(359, 5, [1])
+    False
+    >>> _can_draw_text_at_azimuth(359, 5, [357])
+    False
+    >>> _can_draw_text_at_azimuth(359, 5, [354])
+    True
+    >>> _can_draw_text_at_azimuth(359, 5, [5])
+    True
+
+    >>> _can_draw_text_at_azimuth(75, 3, [0, 90, 180, 135])
+    True
+    >>> _can_draw_text_at_azimuth(75, 3, [0, 77, 180, 135])
+    False
+    >>> _can_draw_text_at_azimuth(75, 3, [0, 70, 90, 300])
+    True
+    >>> _can_draw_text_at_azimuth(75, 3, [0, 73, 90, 300])
+    False
+    '''
+    return not any(
+            # Simple case: az is within delta of a check_az
+            (caz - delta) < az < (caz + delta)
+            # Corner case A: a check_az is close to 0, so the lower bound wraps around 360
+            or (caz < delta and (caz - delta) % 360 < az)
+            # Corner case B: a check_az is close to 360, so the upper bound wraps around 0
+            or (360 - caz < delta and az < (caz + delta) % 360)
+            for caz in check_azs)

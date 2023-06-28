@@ -17,8 +17,10 @@ bcm2835:
 	$(MAKE) -C $(BCM2835)
 	$(MAKE) -C $(BCM2835) install
 
+.PHONY: loader
 loader: $(PYTHON_VENV)
 	$(PYTHON_VENV)/bin/pip install loader/astral-3.2-py3-none-any.whl
+	$(PYTHON_VENV)/bin/pip install loader/mypy-1.4.1-py3-none-any.whl
 
 $(PYTHON_VENV):
 	python3 -m venv $@
@@ -48,5 +50,6 @@ uninstall:
 test: loader/*.py | loader
 	cd loader && $(PYTHON_VENV)/bin/python -m unittest -v $(^F)
 	cd loader && $(PYTHON_VENV)/bin/python -m doctest -v $(^F)
+	cd loader && $(PYTHON_VENV)/bin/mypy --python-version 3.9 $(^F)
 
 FORCE:

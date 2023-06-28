@@ -36,7 +36,7 @@ try:
     # Only on Python 3.9+, but not critical
     import zoneinfo
 except:
-    from backports import zoneinfo
+    from backports import zoneinfo  # type: ignore
 TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
 from datetime import datetime, timedelta, timezone, tzinfo
 

@@ -17,17 +17,17 @@ class Annotate:
     azimuth_r2: int # inner and outer radius of the azimuth line and text
     indicator_r = 10 # radius of the altitude indicator dot
     color = '#bbb'
-    display_dimensions = None
-    mg: geometry.MoonGeometry = None
+    display_dimensions: typing.Tuple[int, int]
+    mg: geometry.MoonGeometry
     display_tz: tzinfo
 
     def __init__(self, display_w: int, display_h: int, mg: geometry.MoonGeometry, display_tz: tzinfo):
         # Set the radius of the ring of annotations for the display size.
         annotate_ring_width = 70
-        self.azimuth_r2 = min(display_w, display_h) / 2 - 0
+        self.azimuth_r2 = min(display_w, display_h) // 2 - 0
         self.azimuth_r1 = self.azimuth_r2 - annotate_ring_width
         self.dimensions = (display_w, display_h)
-        self.half_dimensions = (display_w/2, display_h/2)
+        self.half_dimensions = (display_w//2, display_h//2)
         self.mg = mg
         self.display_tz = display_tz
 
@@ -294,6 +294,7 @@ class Annotate:
             if rise_dt is None or rise_dt < dt:
                 rise_dt = astral_moon.moonrise(loc.observer, dt + timedelta(days=1), tz)
             log.info(f'next rise: {rise_dt}')
+        assert rise_dt is not None
 
         # Find the following moonset, which might be the day after moonrise.
         try:
@@ -303,6 +304,7 @@ class Annotate:
             set_dt = None
         if set_dt is None or set_dt < rise_dt:
             set_dt = astral_moon.moonset(loc.observer, rise_dt + timedelta(days=1), tz)
+        assert set_dt is not None
         log.info(f'next set: {set_dt}')
 
         rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))

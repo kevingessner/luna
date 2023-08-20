@@ -85,21 +85,26 @@ def download_image(img_url):
             f.write(r.read())
 
 def process_dam_image(annot: annotate.Annotate):
+    '''Pre-process the raw moon image: apply scaling, rotating, and re-coloring,
+    the operations that aren't tied to the current time or moon position.'''
     input_img_path = os.path.join(CACHE_DIR, CACHE_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
-    log.info(f'processing to {output_img_path}')
-    subprocess.run(
-        ('convert',
+    args = ('convert',
         input_img_path,
         # The moon image isn't always the same size: NASA scales it based on the apparent size of the moon at the given
         # time.  We always want the moon to be the same size on the display, so trim to just the moon, then scale it to
         # fit within the screen and within the ring of annotations.
         '-trim',
         '-resize', f'{annot.azimuth_r1*2}x{annot.azimuth_r1*2}^',
+        # Increase the contrast for better display on the 16-color display.
         '-contrast',
-        # Center the (square) moon image on a canvas the size of the display
+        # Center the (square) moon image on a canvas the size of the display,
+        # rotated by the "parallactic angle" that accounts for the tilt of the illuminated limb.
+        # The image comes already rotated by the "position angle"; see https://astronomy.stackexchange.com/a/39166/51931
         '-background', '#111',
         '-gravity', 'Center',
+        '-rotate', f'{annot.mg.parallactic_angle}',
+        '+repage',
         '-extent', '{}x{}'.format(*DISPLAY_DIMENSIONS_PX),
         # 'Gray' makes for a nice contrasty conversion to grayscale
         '-colorspace', 'Gray',
@@ -107,12 +112,13 @@ def process_dam_image(annot: annotate.Annotate):
         '-normalize',
         '-compress', 'none',
         output_img_path,
-        ),
-        check = True,
     )
+    log.info(f'processing to {output_img_path}:\n{shlex.join(args)}')
+    subprocess.run(args, check=True)
     log.info(f'processing complete {output_img_path}')
 
 def annotate_dam_image(annot: annotate.Annotate):
+    '''Apply the annotations for the current time, date, and moon position.'''
     input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
     args = ('convert',

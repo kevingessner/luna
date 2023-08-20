@@ -54,17 +54,20 @@ class MoonGeometry:
 
     @cached_property
     def local_sidereal_time(self) -> float:
+        '''In degrees.'''
         time_hours = self.dt.hour + (self.dt.minute / 60.0)
         lst = 100.46 + 0.985647 * days_since_j2000(self.dt) + self.longitude + 15 * time_hours
         return lst % 360.0
 
     @cached_property
     def hour_angle(self) -> float:
+        '''Angle in degrees.'''
         ra_degrees = self.moon_ra * 15.0
         return (self.local_sidereal_time - ra_degrees) % 360.0
 
     @cached_property
     def azimuth(self) -> float:
+        '''Compass angle of the moon's center, in degrees.'''
         alt = self.altitude
         cosaz = (dsin(self.moon_dec) - dsin(alt) * dsin(self.latitude)) / (dcos(alt) * dcos(self.latitude))
         az = math.degrees(math.acos(cosaz))
@@ -74,8 +77,20 @@ class MoonGeometry:
 
     @cached_property
     def altitude(self) -> float:
+        '''Angle in degrees of the moon's center above the horizon (or below, if negative).'''
         sinalt = dsin(self.moon_dec) * dsin(self.latitude) + dcos(self.moon_dec) * dcos(self.latitude) * dcos(self.hour_angle)
         return math.degrees(math.asin(sinalt))
+
+    @cached_property
+    def parallactic_angle(self) -> float:
+        '''Angle in degrees, clockwise from vertical to celestial North.  Used to rotate the moon image appropriately for the current location and time.
+
+        https://astronomy.stackexchange.com/a/26215
+        https://astronomy.stackexchange.com/a/39166
+        '''
+        return math.degrees(math.atan2(
+            dsin(self.hour_angle),
+            dtan(self.latitude) * dcos(self.moon_dec) - dsin(self.moon_dec) * dcos(self.hour_angle)))
 
 def dsin(n: float) -> float:
     '''math.sin on a value in degrees'''
@@ -83,6 +98,9 @@ def dsin(n: float) -> float:
 def dcos(n: float) -> float:
     '''math.cos on a value in degrees'''
     return math.cos(math.radians(n))
+def dtan(n: float) -> float:
+    '''math.tan on a value in degrees'''
+    return math.tan(math.radians(n))
 
 def radians_to_hours(r: float) -> float:
     return math.degrees(r) / 15

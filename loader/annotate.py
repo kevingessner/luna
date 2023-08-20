@@ -97,6 +97,7 @@ class Annotate:
             '-fill', self.color,
             '-pointsize', '40',
             '-gravity', 'SouthWest',
+            '-draw', f'text 20,160 "q: {self.mg.parallactic_angle:0.1f}deg"',
             '-draw', f'text 20,110 "Alt: {self.mg.altitude:0.1f}deg"',
             '-draw', f'text 20,60 "Az: {self.mg.azimuth:0.1f}deg"',
             '-draw', f'''text 20,10 "{self.mg.dt.astimezone(self.display_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}"''',

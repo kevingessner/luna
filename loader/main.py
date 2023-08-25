@@ -15,7 +15,6 @@ the image path will be appended. e.g.:
 DISPLAY_DIMENSIONS_PX = (1872, 1404)
 LATITUDE = 40.8
 LONGITUDE = -73.95
-TIMEZONE_NAME = 'America/New_York'
 
 CACHE_DIR = '/var/tmp/luna'
 CACHE_JSON_NAME = 'dialamoon.json'
@@ -32,13 +31,7 @@ import sys
 import time
 import traceback
 import urllib.request
-try:
-    # Only on Python 3.9+, but not critical
-    import zoneinfo
-except:
-    from backports import zoneinfo  # type: ignore
-TZ = zoneinfo.ZoneInfo(TIMEZONE_NAME)
-from datetime import datetime, timedelta, timezone, tzinfo
+from datetime import datetime, timedelta, timezone
 
 import annotate
 import debug
@@ -141,6 +134,9 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
     os.makedirs(CACHE_DIR, exist_ok=True)
+
+    # Get the local timezone for displaying times, or fall back to UTC.
+    TZ = datetime.utcnow().astimezone().tzinfo or timezone.utc
 
     utc_now = datetime.now(timezone.utc) - timedelta(hours=0)
     success = False

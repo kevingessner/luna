@@ -85,7 +85,7 @@ def download_image(img_url):
             f.write(r.read())
 
 def process_dam_image(annot: annotate.Annotate):
-    '''Pre-process the raw moon image: apply scaling, rotating, and re-coloring,
+    '''Pre-process the raw moon image: apply scaling and re-coloring,
     the operations that aren't tied to the current time or moon position.'''
     input_img_path = os.path.join(CACHE_DIR, CACHE_IMAGE_NAME)
     output_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
@@ -98,6 +98,22 @@ def process_dam_image(annot: annotate.Annotate):
         '-resize', f'{annot.azimuth_r1*2}x{annot.azimuth_r1*2}^',
         # Increase the contrast for better display on the 16-color display.
         '-contrast',
+        # 'Gray' makes for a nice contrasty conversion to grayscale
+        '-colorspace', 'Gray',
+        # Stretch the lightest part of the image to white.
+        '-normalize',
+        output_img_path,
+    )
+    log.info(f'processing to {output_img_path}:\n{shlex.join(args)}')
+    subprocess.run(args, check=True)
+    log.info(f'processing complete {output_img_path}')
+
+def annotate_dam_image(annot: annotate.Annotate):
+    '''Apply the operations and annotations for the current time, date, and moon position.'''
+    input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
+    output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
+    args = ('convert',
+        input_img_path,
         # Center the (square) moon image on a canvas the size of the display,
         # rotated by the "parallactic angle" that accounts for the tilt of the illuminated limb.
         # The image comes already rotated by the "position angle"; see https://astronomy.stackexchange.com/a/39166/51931
@@ -106,23 +122,6 @@ def process_dam_image(annot: annotate.Annotate):
         '-rotate', f'{annot.mg.parallactic_angle}',
         '+repage',
         '-extent', '{}x{}'.format(*DISPLAY_DIMENSIONS_PX),
-        # 'Gray' makes for a nice contrasty conversion to grayscale
-        '-colorspace', 'Gray',
-        # Stretch the lightest part of the image to white.
-        '-normalize',
-        '-compress', 'none',
-        output_img_path,
-    )
-    log.info(f'processing to {output_img_path}:\n{shlex.join(args)}')
-    subprocess.run(args, check=True)
-    log.info(f'processing complete {output_img_path}')
-
-def annotate_dam_image(annot: annotate.Annotate):
-    '''Apply the annotations for the current time, date, and moon position.'''
-    input_img_path = os.path.join(CACHE_DIR, CACHE_PROCESSED_IMAGE_NAME)
-    output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
-    args = ('convert',
-        input_img_path,
         *annot.draw_annotations(),
         output_img_path,
     )

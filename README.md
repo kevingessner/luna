@@ -2,9 +2,11 @@
 
 e-paper moon clock
 
-Designed for Raspberry Pi with a Waveshare e-paper display.
+Shows the phase, current sky position, and rise & set times of the Moon.
 
-Tested with Raspberry Pi Zero WH & Waveshare 10.3", 16-grays, 1872x1404px display: https://www.waveshare.com/10.3inch-e-paper.htm
+![Luna, framed and hung](luna-2023-08-25.jpg)
+
+Powered by a Raspberry Pi with a Waveshare e-paper display.
 
 ## Build and install
 
@@ -13,7 +15,7 @@ Depends on autoconf and imagemagick: `sudo apt-get install autoconf imagemagick`
 To compile luna: `make`
 > Compilation is entirely local to the current directory
 
-To install the luna systemd service and start the process every minute: `VCOM=YOUR_VCOM make install`
+To install the luna systemd service and start the process every five minutes: `VCOM=YOUR_VCOM make install`
 
 `YOUR_VCOM` is the vcom value from your screen's cable, a small negative number like `-1.37`.
 See [the waveshare docs](https://www.waveshare.com/wiki/10.3inch_e-Paper_HAT#Use_the_correct_VCOM_value)
@@ -39,3 +41,29 @@ The various components can be developed independently:
     - installs a service named `luna`
     - see its logs with `sudo journalctl -eu luna`
     - `make uninstall` to stop and remove the service
+
+## Frame and mount
+
+I designed and tested Luna with Raspberry Pi Zero WH & [Waveshare 10.3", 16-grays, 1872x1404px display](https://www.waveshare.com/10.3inch-e-paper.htm).
+Other Raspberry Pi and display models should work, with slight modifications (see below), but are not tested -- YMMV.
+
+The Raspberry Pi is flashed with Raspberry Pi OS,
+and configured with SSH access and Wifi at imaging time.
+
+I mounted Luna for display in a 10"x10" frame ([Blick 18862-2010](https://www.dickblick.com/items/blick-wood-gallery-frame-black-10-x-10-/)),
+matted with black museum board ([Blick 13447-2051](https://www.dickblick.com/items/super-black-presentation-and-mounting-board-15-x-20-14-ply-black/)).
+The mat is 9-3/4" square, with a 6-1/8" diameter circle laser-cut in its center.
+The display is taped to the back of the mat,
+with the ribbon cable through a slot cut in the frame's backing.
+The Raspberry Pi and e-ink driver board are mounted on a [3d-printed bracket](frame/luna-board-mount.stl) affixed to the backing,
+with standard standoffs and screws.
+
+![frame mount](frame/mount.jpg)
+
+## Limitations and TODOs
+
+- Luna's physical location (latitude and longitude) is hard-coded in `loader/main.py`; change accordingly to your location
+	- TODO use a GPS module
+- The e-ink display has two parameters that are hard-coded to the 10.3" display; change accordingly to your display:
+	- `DISPLAY_DIMENSIONS_PX` in `loader/main.py`
+	- Screen mode argument to `epd` in `systemd/luna.service.tmpl` (`ExecStart` line)

@@ -93,8 +93,10 @@ def process_dam_image(annot: annotate.Annotate):
         '-contrast',
         # 'Gray' makes for a nice contrasty conversion to grayscale
         '-colorspace', 'Gray',
-        # Stretch the lightest part of the image to white.
-        '-normalize',
+        # Stretch the lightest part of the image to white, and increase the gamma to lighten the dark parts of the moon
+        # without blowing out the light parts.
+        '-gamma', '1.5',
+        '-auto-level',
         output_img_path,
     )
     log.info(f'processing to {output_img_path}:\n{shlex.join(args)}')

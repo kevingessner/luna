@@ -23,6 +23,10 @@ See [the waveshare docs](https://www.waveshare.com/wiki/10.3inch_e-Paper_HAT#Use
 > Systemd creates a symlink to `systemd/luna.service` in the current directory,
 > so relocate this code to its permanent home before `make install`.
 
+Luna caches data to `/var/tmp/luna`.
+This can be safely cleared at any time the process is not actively running,
+but it speeds up the process and reduces bandwidth to keep it.
+
 ## Development
 
 The various components can be developed independently:
@@ -34,13 +38,25 @@ The various components can be developed independently:
     - builds `bin/epd`, which displays a bitmap on the e-paper display
     - build with `make waveshare` after building `bcm2835` at least once
 - `loader/`: Python code that downloads the moon image, prepares it for display, and optionally displays it
-    - caches data to `/var/tmp/luna`
+    - caches data to `/var/tmp/luna` and produces `/var/tmp/luna/tmp-display.bmp` for display
     - hard-coded display size and location are here
     - requires a virtualenv that is built by `make loader`
 - `systemd/`: systemd unit for running the loader
     - installs a service named `luna`
     - see its logs with `sudo journalctl -eu luna`
     - `make uninstall` to stop and remove the service
+
+To produce the image `/var/tmp/luna/tmp-display.bmp` that will be displayed,
+run `./loader/main.py` (after running `make` at least once).
+You do not need to re-`make` after changes to `loader`'s Python files;
+just re-run `main.py`.
+
+The image produced by `main.py` includes some debugging info that is covered by the frame:
+
+![Luna example image](luna-display-example.png)
+
+Some parts of the loader's logic are cached (e.g. fetching the moon image).
+Clear that cache with `rm /var/tmp/luna/*`.
 
 ## Frame and mount
 

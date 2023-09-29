@@ -1,11 +1,7 @@
 import logging
-import math
 import typing
 from datetime import datetime, timedelta, timezone, tzinfo
 from functools import cached_property
-
-import astral
-import astral.moon as astral_moon
 
 import geometry
 
@@ -44,7 +40,7 @@ class Annotate:
     def _can_draw_text_at_azimuth(self, az: float, *mgs: geometry.MoonGeometry, delta: float = 4) -> bool:
         '''Check if the given azimuth is "too close" to that of any of the geometries.'''
         if not mgs:
-            mgs = (self.mg, *self._rise_set)
+            mgs = (self.mg, *self.mg.nearest_rise_and_set)
         return _can_draw_text_at_azimuth(az, delta, [mg.azimuth for mg in mgs])
 
     def _draw_text(self, text: str, angle: int, x: int, y: int, text_gravity: str = 'center'):
@@ -197,7 +193,7 @@ class Annotate:
         '''Returns draw commands for a curve of the moon's position for the current day.  Starts at the rise azimuth, curves
         through the zenith azimuth and altitude, then back to the set azimuth.'''
 
-        (rise_mg, set_mg) = self._rise_set
+        (rise_mg, set_mg) = self.mg.nearest_rise_and_set
 
         # Interpolate regularly between rise and set; these will be the knots (points) of the curve.
         times = []
@@ -215,8 +211,7 @@ class Annotate:
             radius = self._lerp_altitude(altitude)
             return (-geometry.dsin(azimuth) * radius, geometry.dcos(azimuth) * radius)
         for t in times:
-            pos = astral_moon.moon_position(geometry.days_since_j2000(t))
-            pos_mg = geometry.MoonGeometry(t, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(pos.right_ascension), math.degrees(pos.declination))
+            pos_mg = geometry.MoonGeometry.for_datetime(t, self.mg.latitude, self.mg.longitude)
             log.debug(f'mg {t}: alt {pos_mg.altitude:0.2f}, az {pos_mg.azimuth:0.2f}')
             points.append(point_for_geometry(pos_mg.altitude, pos_mg.azimuth))
 
@@ -271,49 +266,6 @@ class Annotate:
 
         return draw_commands
 
-    @cached_property
-    def _rise_set(self) -> typing.Tuple[geometry.MoonGeometry, geometry.MoonGeometry]:
-        '''Returns a tuple of MoonGeometry of the moon rise and moon set to be displayed: the most-recent rise if the moon
-        is up at `self.mg.dt`, otherwise the next rise; and the set following that rise.'''
-        # Work in UTC for consistency.
-        tz = timezone.utc
-        dt = self.mg.dt.astimezone(tz)
-        loc = astral.LocationInfo('', '', tz.tzname(dt), self.mg.latitude, self.mg.longitude)
-
-        try:
-            rise_dt = astral_moon.moonrise(loc.observer, dt, tz)
-        except ValueError:
-            # astral throws in some cases when there is no rise on a given date.
-            rise_dt = None
-        if self.mg.altitude > 0: # moon is up
-            # Find the most-recent past moonrise, which may be yesterday.
-            if rise_dt is None or rise_dt > dt:
-                rise_dt = astral_moon.moonrise(loc.observer, dt - timedelta(days=1), tz)
-            log.info(f'most recent rise: {rise_dt}')
-        else: # moon is not up
-            # Find the next moonrise, which may be tomorrow.
-            if rise_dt is None or rise_dt < dt:
-                rise_dt = astral_moon.moonrise(loc.observer, dt + timedelta(days=1), tz)
-            log.info(f'next rise: {rise_dt}')
-        assert rise_dt is not None
-
-        # Find the following moonset, which might be the day after moonrise.
-        try:
-            set_dt = astral_moon.moonset(loc.observer, rise_dt, tz)
-        except ValueError:
-            # astral throws in some cases when there is no set on a given date.
-            set_dt = None
-        if set_dt is None or set_dt < rise_dt:
-            set_dt = astral_moon.moonset(loc.observer, rise_dt + timedelta(days=1), tz)
-        assert set_dt is not None
-        log.info(f'next set: {set_dt}')
-
-        rise_pos = astral_moon.moon_position(geometry.days_since_j2000(rise_dt))
-        rise_mg = geometry.MoonGeometry(rise_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
-        set_pos = astral_moon.moon_position(geometry.days_since_j2000(set_dt))
-        set_mg = geometry.MoonGeometry(set_dt, self.mg.latitude, self.mg.longitude, geometry.radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
-
-        return (rise_mg, set_mg)
 
 def _interpolate_control_points(points, k = 0.2):
     '''Given a list of points, returns those points with Bezier control points interpolated.

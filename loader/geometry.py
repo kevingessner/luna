@@ -1,9 +1,20 @@
+import logging
 import math
+import typing
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from functools import cached_property
 
+import astral
+import astral.moon as astral_moon
+
 J2000 = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+# Type annotations don't allow forward references, so this allows methods in MoonGeometry to reference the class itself.
+T = typing.TypeVar('T', bound='MoonGeometry')
+
+log = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class MoonGeometry:
@@ -52,6 +63,11 @@ class MoonGeometry:
     moon_ra: float # in decimal hours
     moon_dec: float # in decimal degrees
 
+    @classmethod
+    def for_datetime(cls: typing.Type[T], dt: datetime, latitude: float, longitude: float) -> T:
+        pos = astral_moon.moon_position(days_since_j2000(dt))
+        return cls(dt, latitude, longitude, radians_to_hours(pos.right_ascension), math.degrees(pos.declination))
+
     @cached_property
     def local_sidereal_time(self) -> float:
         '''In degrees.'''
@@ -91,6 +107,50 @@ class MoonGeometry:
         return math.degrees(math.atan2(
             dsin(self.hour_angle),
             dtan(self.latitude) * dcos(self.moon_dec) - dsin(self.moon_dec) * dcos(self.hour_angle)))
+
+    @cached_property
+    def nearest_rise_and_set(self) -> typing.Tuple['MoonGeometry', 'MoonGeometry']:
+        '''Returns a tuple of MoonGeometry of the moon rise and moon set to be displayed: the most-recent rise if the moon
+        is up at `self.dt`, otherwise the next rise; and the set following that rise.'''
+        # Work in UTC for consistency.
+        tz = timezone.utc
+        dt = self.dt.astimezone(tz)
+        loc = astral.LocationInfo('', '', tz.tzname(dt), self.latitude, self.longitude)
+
+        try:
+            rise_dt = astral_moon.moonrise(loc.observer, dt, tz)
+        except ValueError:
+            # astral throws in some cases when there is no rise on a given date.
+            rise_dt = None
+        if self.altitude > 0: # moon is up
+            # Find the most-recent past moonrise, which may be yesterday.
+            if rise_dt is None or rise_dt > dt:
+                rise_dt = astral_moon.moonrise(loc.observer, dt - timedelta(days=1), tz)
+            log.info(f'most recent rise: {rise_dt}')
+        else: # moon is not up
+            # Find the next moonrise, which may be tomorrow.
+            if rise_dt is None or rise_dt < dt:
+                rise_dt = astral_moon.moonrise(loc.observer, dt + timedelta(days=1), tz)
+            log.info(f'next rise: {rise_dt}')
+        assert rise_dt is not None
+
+        # Find the following moonset, which might be the day after moonrise.
+        try:
+            set_dt = astral_moon.moonset(loc.observer, rise_dt, tz)
+        except ValueError:
+            # astral throws in some cases when there is no set on a given date.
+            set_dt = None
+        if set_dt is None or set_dt < rise_dt:
+            set_dt = astral_moon.moonset(loc.observer, rise_dt + timedelta(days=1), tz)
+        assert set_dt is not None
+        log.info(f'next set: {set_dt}')
+
+        rise_pos = astral_moon.moon_position(days_since_j2000(rise_dt))
+        rise_mg = MoonGeometry(rise_dt, self.latitude, self.longitude, radians_to_hours(rise_pos.right_ascension), math.degrees(rise_pos.declination))
+        set_pos = astral_moon.moon_position(days_since_j2000(set_dt))
+        set_mg = MoonGeometry(set_dt, self.latitude, self.longitude, radians_to_hours(set_pos.right_ascension), math.degrees(set_pos.declination))
+
+        return (rise_mg, set_mg)
 
 def dsin(n: float) -> float:
     '''math.sin on a value in degrees'''

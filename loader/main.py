@@ -30,7 +30,10 @@ import subprocess
 import sys
 import time
 import traceback
+import typing
+import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
 import annotate
@@ -39,10 +42,25 @@ import geometry
 
 log = logging.getLogger(__name__)
 
+@contextmanager
+def _fetch_with_retries(url: str, *, retries: typing.List[int]):
+    '''GET the given URL with `urllib.request.urlopen`, retrying `URLError`s after a succession of delays.'''
+    while True:
+        try:
+            with urllib.request.urlopen(url) as r:
+                yield r
+            break
+        except urllib.error.URLError as e:
+            if not retries:
+                raise
+            t = retries.pop(0)
+            log.info(f'retrying {len(retries) + 1}x more in {t}s, after error', exc_info=e)
+            time.sleep(t)
+
 def fetch_dialamoon(dt: datetime):
     url = 'https://svs.gsfc.nasa.gov/api/dialamoon/{}'.format(dt.strftime('%Y-%m-%dT%H:%M'))
     log.info(url)
-    with urllib.request.urlopen(url) as r:
+    with _fetch_with_retries(url, retries=[1, 3, 15]) as r:
         return json.load(r)
 
 def cached_dam():
@@ -72,7 +90,7 @@ def cached_dam_image():
 
 def download_image(img_url):
     img_path = os.path.join(CACHE_DIR, CACHE_IMAGE_NAME)
-    with urllib.request.urlopen(img_url) as r:
+    with _fetch_with_retries(img_url, retries=[1, 3, 15]) as r:
         with open(img_path, 'wb') as f:
             log.info(f'downloading {img_url} to {img_path}')
             f.write(r.read())

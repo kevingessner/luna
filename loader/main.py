@@ -182,7 +182,7 @@ if __name__ == '__main__':
         success = True
     except:
         output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
-        debug.produce_debug_image(DISPLAY_DIMENSIONS_PX, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False)))
+        debug.produce_debug_image(DISPLAY_DIMENSIONS_PX, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False, limit=5)))
 
     if len(sys.argv) > 1:
         display_dam_image(sys.argv[1].split(' '))

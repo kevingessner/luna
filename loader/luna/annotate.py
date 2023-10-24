@@ -3,7 +3,7 @@ import typing
 from datetime import datetime, timedelta, timezone, tzinfo
 from functools import cached_property
 
-import geometry
+from . import geometry
 
 log = logging.getLogger(__name__)
 

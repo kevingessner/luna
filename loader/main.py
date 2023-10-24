@@ -36,9 +36,9 @@ import urllib.request
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-import annotate
-import debug
-import geometry
+from luna import annotate
+from luna import debug
+from luna import geometry
 
 log = logging.getLogger(__name__)
 

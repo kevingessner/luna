@@ -1,12 +1,19 @@
 #!/usr/bin/env venv/bin/python
 
+import doctest
 import math
 import unittest
 from datetime import datetime, timedelta, timezone, tzinfo
 
 import astral.moon as astral_moon
 
-import geometry
+from . import geometry
+
+
+def load_tests(loader, tests, ignore):
+    tests.addTests(doctest.DocTestSuite(geometry))
+    return tests
+
 
 class GeometryTest(unittest.TestCase):
 

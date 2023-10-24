@@ -1,11 +1,18 @@
 #!/usr/bin/env venv/bin/python
 
+import doctest
 import math
 import unittest
 from datetime import datetime, timedelta, timezone, tzinfo
 
-import annotate
-import geometry
+from . import annotate
+from . import geometry
+
+
+def load_tests(loader, tests, ignore):
+    tests.addTests(doctest.DocTestSuite(annotate))
+    return tests
+
 
 class AnnotateTest(unittest.TestCase):
     def test_astral_year(self):

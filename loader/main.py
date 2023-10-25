@@ -32,12 +32,11 @@ from luna import geometry
 from images import finder
 
 CACHE_DIR = '/var/tmp/luna'
-finder.CACHE_DIR = CACHE_DIR # Gross! but temporary.
 CACHE_FINAL_IMAGE_NAME = 'tmp-display.bmp'
 
 log = logging.getLogger(__name__)
 
-def annotate_image(annot: annotate.Annotate, input_img_path: str, output_img_path: str):
+def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: str, output_img_path: str):
     '''Apply the operations and annotations for the current time, date, and moon position.'''
     # Fit the image not just in the screen but inside the inner ring of annotations.
     max_size = annot.azimuth_r1 * 2
@@ -45,11 +44,11 @@ def annotate_image(annot: annotate.Annotate, input_img_path: str, output_img_pat
         input_img_path,
         '-resize', f'{max_size}x{max_size}^',
         # Center the (square) moon image on a canvas the size of the display,
-        # rotated by the "parallactic angle" that accounts for the tilt of the illuminated limb.
-        # The image comes already rotated by the "position angle"; see https://astronomy.stackexchange.com/a/39166/51931
+        # rotated by the "position angle" (from the ephemeris; CW) and
+        # "parallactic angle" (calculated; CCW) that account for the tilt of the illuminated limb.
         '-background', '#111',
         '-gravity', 'Center',
-        '-rotate', f'{annot.mg.parallactic_angle}',
+        '-rotate', f'{annot.mg.parallactic_angle - posangle}',
         '+repage',
         '-extent', '{}x{}'.format(*DISPLAY_DIMENSIONS_PX),
         *annot.draw_annotations(),
@@ -79,8 +78,8 @@ if __name__ == '__main__':
     try:
         mg = geometry.MoonGeometry.for_datetime(utc_now, LATITUDE, LONGITUDE)
         annot = annotate.Annotate(*DISPLAY_DIMENSIONS_PX, mg, TZ)
-        input_img_path = finder.moon_image_for_datetime(mg.dt, )
-        annotate_image(annot, input_img_path, output_img_path)
+        (input_img_path, posangle) = finder.moon_image_for_datetime(mg.dt)
+        annotate_image(annot, posangle, input_img_path, output_img_path)
     except:
         debug.produce_debug_image(DISPLAY_DIMENSIONS_PX, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False, limit=5)))
 

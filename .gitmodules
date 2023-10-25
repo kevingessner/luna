@@ -1,0 +1,3 @@
+[submodule "loader/images/nasa"]
+	path = loader/images/nasa
+	url = git@github.com:kevingessner/luna-images.git

@@ -12,7 +12,13 @@ Powered by a Raspberry Pi with a Waveshare e-paper display.
 
 Depends on autoconf and imagemagick: `sudo apt-get install autoconf imagemagick`
 
+Clone the source respository and run `git submodule update --init` to fetch the image library
+
+> The images are about 32GB.  Fetching the submodule also requires about 32GB of git repository overhead.
+> To just get the images, without a repository, run `./loader/images/fetch-images.sh` instead of `git submodule`.
+
 To compile luna: `make`
+
 > Compilation is entirely local to the current directory
 
 To install the luna systemd service and start the process every five minutes: `VCOM=YOUR_VCOM make install`
@@ -23,11 +29,11 @@ See [the waveshare docs](https://www.waveshare.com/wiki/10.3inch_e-Paper_HAT#Use
 > Systemd creates a symlink to `systemd/luna.service` in the current directory,
 > so relocate this code to its permanent home before `make install`.
 
-Luna caches data to `/var/tmp/luna`.
-This can be safely cleared at any time the process is not actively running,
-but it speeds up the process and reduces bandwidth to keep it.
+Luna uses `/var/tmp/luna` as scratch space.
+This can be safely cleared at any time the process is not actively running.
 
 ## Development
+
 
 The various components can be developed independently:
 
@@ -37,10 +43,11 @@ The various components can be developed independently:
 - `waveshare/`: C code based on Waveshare's RPi library at https://github.com/waveshare/IT8951-ePaper/tree/master/Raspberry
     - builds `bin/epd`, which displays a bitmap on the e-paper display
     - build with `make waveshare` after building `bcm2835` at least once
-- `loader/`: Python code that downloads the moon image, prepares it for display, and optionally displays it
-    - caches data to `/var/tmp/luna` and produces `/var/tmp/luna/tmp-display.bmp` for display
+- `loader/`: Python code that prepares the moon image for display and optionally displays it
+    - produces `/var/tmp/luna/tmp-display.bmp` for display
     - hard-coded display size and location are here
     - requires a virtualenv that is built by `make loader`
+    - `images/`: library of images and ephemeris data from NASA
 - `systemd/`: systemd unit for running the loader
     - installs a service named `luna`
     - see its logs with `sudo journalctl -eu luna`
@@ -54,9 +61,6 @@ just re-run `main.py`.
 The image produced by `main.py` includes some debugging info that is covered by the frame:
 
 ![Luna example image](luna-display-example.png)
-
-Some parts of the loader's logic are cached (e.g. fetching the moon image).
-Clear that cache with `rm /var/tmp/luna/*`.
 
 ## Frame and mount
 

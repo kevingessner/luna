@@ -39,8 +39,11 @@ log = logging.getLogger(__name__)
 
 def annotate_image(annot: annotate.Annotate, input_img_path: str, output_img_path: str):
     '''Apply the operations and annotations for the current time, date, and moon position.'''
+    # Fit the image not just in the screen but inside the inner ring of annotations.
+    max_size = annot.azimuth_r1 * 2
     args = ('convert',
         input_img_path,
+        '-resize', f'{max_size}x{max_size}^',
         # Center the (square) moon image on a canvas the size of the display,
         # rotated by the "parallactic angle" that accounts for the tilt of the illuminated limb.
         # The image comes already rotated by the "position angle"; see https://astronomy.stackexchange.com/a/39166/51931
@@ -76,8 +79,7 @@ if __name__ == '__main__':
     try:
         mg = geometry.MoonGeometry.for_datetime(utc_now, LATITUDE, LONGITUDE)
         annot = annotate.Annotate(*DISPLAY_DIMENSIONS_PX, mg, TZ)
-        # Fit the image not just in the screen but inside the inner ring of annotations.
-        input_img_path = finder.moon_image_for_datetime(mg.dt, max_size=annot.azimuth_r1*2)
+        input_img_path = finder.moon_image_for_datetime(mg.dt, )
         annotate_image(annot, input_img_path, output_img_path)
     except:
         debug.produce_debug_image(DISPLAY_DIMENSIONS_PX, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False, limit=5)))

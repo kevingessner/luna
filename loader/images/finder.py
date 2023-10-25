@@ -69,16 +69,14 @@ def download_image(img_url):
             f.write(r.read())
     return img_path
 
-def process_dam_image(max_size: int, input_img_path: str, output_img_path: str):
+def process_dam_image(input_img_path: str, output_img_path: str):
     '''Pre-process the raw moon image: apply scaling and re-coloring,
     the operations that aren't tied to the current time or moon position.'''
     args = ('convert',
         input_img_path,
         # The moon image isn't always the same size: NASA scales it based on the apparent size of the moon at the given
-        # time.  We always want the moon to be the same size on the display, so trim to just the moon, then scale it to
-        # fit within the screen.
+        # time.  We always want the moon to be the same size on the display, so trim to just the moon.
         '-trim',
-        '-resize', f'{max_size}x{max_size}^',
         # Increase the contrast for better display on the 16-color display.
         '-contrast',
         # 'Gray' makes for a nice contrasty conversion to grayscale
@@ -94,8 +92,8 @@ def process_dam_image(max_size: int, input_img_path: str, output_img_path: str):
     log.info(f'processing complete {output_img_path}')
     return output_img_path
 
-def moon_image_for_datetime(dt: datetime, max_size: int) -> str:
-    '''Return the image of the moon for the given datetime, scaled to at most `max_size` pixels.'''
+def moon_image_for_datetime(dt: datetime) -> str:
+    '''Return the image of the moon for the given datetime.'''
     dam = fetch_dialamoon(dt)
     last_dam_image = cached_dam_image()
     new_dam_image = dam['image']['url']
@@ -108,6 +106,6 @@ def moon_image_for_datetime(dt: datetime, max_size: int) -> str:
         new_dam_image = new_dam_image.replace('730x730_1x1_30p', '3840x2160_16x9_30p/plain').replace('.jpg', '.tif')
         logging.info('downloading new image')
         downloaded_img = download_image(new_dam_image)
-        process_dam_image(max_size, downloaded_img, output_img_path)
+        process_dam_image(downloaded_img, output_img_path)
     cache_dam(dam)
     return output_img_path

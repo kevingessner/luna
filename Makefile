@@ -28,6 +28,7 @@ $(PYTHON_VENV):
 .PHONY: clean
 clean: uninstall
 	rm -f $(SYSTEMD)
+	rm -rf $(PYTHON_VENV) $(PWD)/loader/__pycache__
 	$(MAKE) -C $(BCM2835) clean
 	$(MAKE) -C $(WAVESHARE) clean
 

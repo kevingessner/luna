@@ -20,6 +20,10 @@ bcm2835:
 .PHONY: loader
 loader: $(PYTHON_VENV)
 	$(PYTHON_VENV)/bin/pip install loader/astral-3.2-py3-none-any.whl
+
+.PHONY: loader_dev
+# mypy has online dependencies, so only install it when needed (not in production)
+loader_dev: loader
 	$(PYTHON_VENV)/bin/pip install loader/mypy-1.4.1-py3-none-any.whl
 
 $(PYTHON_VENV):
@@ -27,10 +31,10 @@ $(PYTHON_VENV):
 
 .PHONY: clean
 clean: uninstall
-	rm -f $(SYSTEMD)
+	rm -f $(SYSTEMD) $(CONFIG_SYSTEMD)
 	rm -rf $(PYTHON_VENV) $(PWD)/loader/__pycache__
-	$(MAKE) -C $(BCM2835) clean
-	$(MAKE) -C $(WAVESHARE) clean
+	$(MAKE) -C $(BCM2835) clean || true
+	$(MAKE) -C $(WAVESHARE) clean || true
 
 $(SYSTEMD): systemd/luna.service.tmpl FORCE
 ifndef VCOM
@@ -48,7 +52,7 @@ uninstall:
 	sudo systemctl stop luna || true
 	sudo systemctl disable luna || true
 
-test: loader/**/*.py | loader
+test: loader/**/*.py | loader_dev
 	$(PYTHON_VENV)/bin/python -m unittest -v $^
 	$(PYTHON_VENV)/bin/mypy --python-version 3.9 $^
 

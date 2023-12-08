@@ -24,5 +24,5 @@ ${DIR_BIN}/%.o:%.c
 	$(CC) $(CFLAGS) -c  $< -o $@ 
 
 clean :
-	rm $(DIR_BIN)/*.* 
+	rm -f $(DIR_BIN)/*.*
 

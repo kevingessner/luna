@@ -36,3 +36,22 @@ def produce_debug_image(dimensions, output_img_path: str, dt: datetime, msg):
     log.info(f'producing debug image to {output_img_path}:\n{shlex.join(args)}')
     subprocess.run(args, check=True)
     log.info(f'producing debug image complete {output_img_path}')
+
+def produce_needs_config_image(dimensions, output_img_path: str):
+    text = f'''
+Luna needs to be set up.
+
+Visit https://lunaclock.net/setup?{_check_output_safe(['hostname']).replace('luna-', 'luna-setup-')} to set up your Luna.
+'''
+    args = ('convert',
+        '-background', 'white',
+        '-fill', 'black',
+        '-size', '{0}x{0}'.format(min(*dimensions) - 50),
+        '-gravity', 'center',
+        f'label:{text}',
+        '-extent', '{}x{}'.format(*dimensions),
+        output_img_path,
+    )
+    log.info(f'producing debug image to {output_img_path}:\n{shlex.join(args)}')
+    subprocess.run(args, check=True)
+    log.info(f'producing debug image complete {output_img_path}')

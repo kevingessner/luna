@@ -17,3 +17,6 @@ loader/venv/
 __pycache__/
 
 *.swp
+
+config/latitude
+config/longitude

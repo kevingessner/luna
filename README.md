@@ -10,16 +10,23 @@ Powered by a Raspberry Pi with a Waveshare e-paper display.
 
 ## Build and install
 
-Depends on autoconf and imagemagick: `sudo apt-get install autoconf imagemagick`
+Depends on a few packages: `sudo apt-get install autoconf imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35`
 
 Clone the source respository and run `git submodule update --init` to fetch the image library
 
-> The images are about 32GB.  Fetching the submodule also requires about 32GB of git repository overhead.
+> The images are about 18GB.  Fetching the submodule also requires about 18GB of git repository overhead.
 > To just get the images, without a repository, run `./loader/images/fetch-images.sh` instead of `git submodule`.
 
 To compile luna: `make`
 
 > Compilation is entirely local to the current directory
+
+Set your latitude and longitude (positive is north/east):
+
+```
+echo XX.XX > config/latitude
+echo YY.YY > config/longitude
+```
 
 To install the luna systemd service and start the process every five minutes: `VCOM=YOUR_VCOM make install`
 
@@ -32,8 +39,8 @@ See [the waveshare docs](https://www.waveshare.com/wiki/10.3inch_e-Paper_HAT#Use
 Luna uses `/var/tmp/luna` as scratch space.
 This can be safely cleared at any time the process is not actively running.
 
-## Development
 
+## Development
 
 The various components can be developed independently:
 
@@ -82,8 +89,6 @@ with standard standoffs and screws.
 
 ## Limitations and TODOs
 
-- Luna's physical location (latitude and longitude) is hard-coded in `loader/main.py`; change accordingly to your location
-	- TODO use a GPS module
 - The e-ink display has two parameters that are hard-coded to the 10.3" display; change accordingly to your display:
-	- `DISPLAY_DIMENSIONS_PX` in `loader/main.py`
-	- Screen mode argument to `epd` in `systemd/luna.service.tmpl` (`ExecStart` line)
+    - `DISPLAY_DIMENSIONS_PX` in `loader/main.py`
+    - Screen mode argument to `epd` in `systemd/luna.service.tmpl` (`ExecStart` line)

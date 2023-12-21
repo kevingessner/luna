@@ -1,5 +1,6 @@
 waveshare/bin/*
 systemd/luna.service
+systemd/luna-config.service
 # built outputs from ./configure and make
 bcm2835-1.71/Makefile
 bcm2835-1.71/config.h

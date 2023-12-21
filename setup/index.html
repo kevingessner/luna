@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+    </head>
+
+    <body>
+        <h1>🌗 Luna setup</h1>
+        <div id="form">
+            <p>
+                <label for="datetime">Current time:</label>
+                <input type="datetime-local" name="datetime" />
+                <span id="timezone"></span>
+                <input name="tzcode" type="hidden" />
+            </p>
+            <p>
+                <label for="latitude">Location:</label>
+                <input type="number" min="-90" max="90" step="0.01" name="latitude" placeholder="Latitude" />
+                <input type="number" min="-180" max="180" step="0.01" name="longitude" placeholder="Longitude" />
+                <button id="locate">Locate me</button>
+            </p>
+            <p id="message"></p>
+            <p><input type="button" value="Continue" id="confirm" /></p>
+        </div>
+        <div id="wifi">
+            <p><b>Leave this page open</b> and connect your device to <b><span class="network-name"></span></b>. Then return to this page to continue.</p>
+            <p><a id="connected"><button>I'm connected to <span class="network-name"></span></button></p>
+        </div>
+        <div id="success">
+            <h2>Success!</h2>
+            <p>Luna is set up successfully. The display will update momentarily.</p>
+            <p>You can now disconnect from <span class="network-name"></span> and reconnect to your usual Wifi network.</p>
+        </div>
+
+        <script type="text/javascript">
+            (function() {
+                var datetime_field = document.querySelector('[name=datetime]');
+                var now = new Date();
+                var formatter = new Intl.DateTimeFormat('en-us', {year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false,
+                    timeZoneName: 'short',
+                });
+                var formatted = Object.fromEntries(formatter.formatToParts(now).map(o => [o['type'], o['value']]));
+                var now_str = `${formatted['year']}-${formatted['month']}-${formatted['day']}T${formatted['hour']}:${formatted['minute']}`;
+                datetime_field.value = now_str;
+                // Set both the internal TZ code (like "America/New_York") to submit, and the short code to show the user.
+                var timezone_field = document.querySelector('[name=tzcode]');
+                timezone_field.value = formatter.resolvedOptions().timeZone;
+                document.querySelector('#timezone').innerText = `(${formatted['timeZoneName']})`;
+            })();
+
+            (function() {
+                const btn = document.querySelector('#locate');
+                if (!isSecureContext || !navigator.geolocation) {
+                    // Geolocation won't work in an insecure context.
+                    btn.remove();
+                    return;
+                }
+                btn.addEventListener('click', function locate_click() {
+                    navigator.geolocation.getCurrentPosition(
+                        function success(pos) {
+                            document.querySelector('[name=latitude]').value = pos.coords.latitude.toFixed(2);
+                            document.querySelector('[name=longitude]').value = pos.coords.longitude.toFixed(2);
+                        },
+                        function error(e) {
+                            document.querySelector('#message').innerText = `Unable to find your location (${e.message})`;
+                        }
+                    );
+                });
+            })();
+
+            (function() {
+                const fromUrl = (document.location.search || '').replace('?', '');
+                const networkName = fromUrl ? `the ${fromUrl} Wifi network` : 'the Wifi network for this Luna';
+                document.querySelectorAll('.network-name').forEach(el => el.innerText = networkName);
+            })();
+
+            (function() {
+                const isLunaLocal = false; // replaced when this page is served from luna itself!
+
+                const btn = document.querySelector('#confirm');
+                const msg = document.querySelector('#message');
+
+                function toggleVisibility(id, flag) {
+                    document.querySelector('#' + id).style.display = (flag ? 'block' : 'none');
+                }
+
+                toggleVisibility('form', true);
+                toggleVisibility('wifi', false);
+                toggleVisibility('success', false);
+
+                function present_wifi_success() {
+                    toggleVisibility('form', false);
+                    toggleVisibility('wifi', false);
+                    toggleVisibility('success', true);
+                }
+
+                function present_wifi_setup(data) {
+                    toggleVisibility('form', false);
+                    toggleVisibility('wifi', true);
+                    toggleVisibility('success', false);
+                    // Can't post a form from the secure setup page to luna itself, so use a link -- GET will save it in the config server.
+                    document.querySelector('#connected').href = 'http://192.168.4.1?config=' + btoa(JSON.stringify(data));
+                }
+
+                // Used after saving the data, Luna redirects to the success page.
+                if (document.location.hash.replace('#', '') == 'success') {
+                    present_wifi_success();
+                    document.location.hash = '';
+                    return;
+                }
+
+                btn.addEventListener('click', async function confirm_click() {
+                    msg.innerText = '';
+
+                    // validate and collect the entries; they will be checked again server-side
+                    let data = {};
+                    for (const field of ['datetime', 'latitude', 'longitude', 'tzcode']) {
+                        const f = document.querySelector(`[name=${field}]`);
+                        if (!f.value) {
+                            msg.innerText = "Please enter the current time and location.";
+                            return;
+                        }
+                        data[field] = f.value;
+                    }
+
+                    // If this is served from Luna directly, save locally.  This does not work from a hosted page
+                    // because fetch()ing an insecure URL is forbidden from a secure one.
+                    if (isLunaLocal) {
+                        msg.innerText = 'Saving...';
+                        try {
+                            const resp = await fetch('', {
+                                method: "POST",
+                                body: JSON.stringify(data),
+                                headers: {
+                                    "Content-Type": "application/json",
+                                },
+                            });
+                            if (resp.ok) {
+                                present_wifi_success();
+                            } else {
+                                const error = await resp.text();
+                                msg.innerText = `Something went wrong. Please try again. (${error})`;
+                            }
+                        } catch (e) {
+                            msg.innerText = `Something went wrong. Please try again. (${e})`;
+                        }
+                        return;
+                    }
+
+                    present_wifi_setup(data);
+                });
+            })();
+        </script>
+    </body>
+
+</html>
+

@@ -1,0 +1,15 @@
+[Unit]
+Description=moon e-paper controller config server
+After=multi-user.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=luna
+# Config server serves on port 8000; use iptables to also serve it on the priveleged port 80.
+ExecStartPre=sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8000
+ExecStart=$DIR/loader/venv/bin/python $DIR/loader/config_server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

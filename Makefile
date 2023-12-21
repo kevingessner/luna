@@ -2,6 +2,7 @@ WAVESHARE=waveshare
 BCM2835=bcm2835-1.71
 BCM2835_BIN=$(PWD)/$(BCM2835)/bin
 SYSTEMD=systemd/luna.service
+CONFIG_SYSTEMD=systemd/luna-config.service
 PYTHON_VENV=$(PWD)/loader/venv
 
 .PHONY: all
@@ -42,15 +43,21 @@ ifndef VCOM
 endif
 	env VCOM=$(VCOM) DIR=$(PWD) envsubst <$< >$@
 
+$(CONFIG_SYSTEMD): systemd/luna-config.service.tmpl FORCE
+	env DIR=$(PWD) envsubst <$< >$@
+
 .PHONY: install
-install: $(SYSTEMD)
-	sudo systemctl enable $(PWD)/$<
+install: $(SYSTEMD) $(CONFIG_SYSTEMD)
+	for f in $^; do sudo systemctl enable $(PWD)/$$f; done
 	sudo systemctl start luna
+	sudo systemctl start luna-config
 
 .PHONY: uninstall
 uninstall:
 	sudo systemctl stop luna || true
 	sudo systemctl disable luna || true
+	sudo systemctl stop luna-config || true
+	sudo systemctl disable luna-config || true
 
 test: loader/**/*.py | loader_dev
 	$(PYTHON_VENV)/bin/python -m unittest -v $^

@@ -1,0 +1,13 @@
+[Unit]
+Description=moon e-paper controller config server
+After=multi-user.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=luna
+ExecStart=$DIR/loader/venv/bin/python $DIR/loader/config_server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

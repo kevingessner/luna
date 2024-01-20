@@ -49,7 +49,7 @@ def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: st
         '-gravity', 'Center',
         '-rotate', f'{annot.mg.parallactic_angle - posangle}',
         '+repage',
-        '-extent', '{}x{}'.format(*DISPLAY_DIMENSIONS_PX),
+        '-extent', '{}x{}'.format(*annot.dimensions),
         *annot.draw_annotations(),
         output_img_path,
     )
@@ -65,6 +65,21 @@ def display_image(img_path: str, args):
     subprocess.run(args, check=True, timeout=30)
 
 if __name__ == '__main__':
+    def _parse_dims(s: str):
+        '''
+        >>> _parse_dims('123x56')
+        (123, 56)
+        '''
+        _parse_dims.__name__ = 'dimensions' # used in argparse's error output
+        (w, h) = s.split('x')
+        return (int(w), int(h))
+
+    import argparse
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--dimensions", metavar='WxH', help="'WxH' in pixels", default='{0}x{1}'.format(*DISPLAY_DIMENSIONS_PX), type=_parse_dims)
+    parser.add_argument("call_with_image", help="after the image is made, execute this command line, with the image file name appended as the final argument", default=None, nargs='?')
+    args = parser.parse_args()
+
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -78,18 +93,18 @@ if __name__ == '__main__':
         latitude, longitude = config.get_location()
         log.info(f'got location ({latitude}, {longitude})')
         mg = geometry.MoonGeometry.for_datetime(utc_now, latitude, longitude)
-        annot = annotate.Annotate(*DISPLAY_DIMENSIONS_PX, mg, TZ)
+        annot = annotate.Annotate(*args.dimensions, mg, TZ)
         (input_img_path, posangle) = finder.moon_image_for_datetime(mg.dt)
         annotate_image(annot, posangle, input_img_path, output_img_path)
     except config.LunaNeedsConfigException as e:
         log.error('not configured', exc_info=e)
         # If we are running on the command line, just print the error and be done.
         if len(sys.argv) > 1:
-            debug.produce_needs_config_image(DISPLAY_DIMENSIONS_PX, output_img_path)
+            debug.produce_needs_config_image(args.dimensions, output_img_path)
         else:
             sys.exit(1)
     except:
-            debug.produce_debug_image(DISPLAY_DIMENSIONS_PX, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False, limit=5)))
+            debug.produce_debug_image(args.dimensions, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False, limit=5)))
 
-    if len(sys.argv) > 1:
-        display_image(output_img_path, sys.argv[1].split(' '))
+    if args.call_with_image:
+        display_image(output_img_path, shlex.split(args.call_with_image))

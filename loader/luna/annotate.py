@@ -13,7 +13,8 @@ class Annotate:
     azimuth_r2: int # inner and outer radius of the azimuth line and text
     indicator_r = 10 # radius of the altitude indicator dot
     color = '#bbb'
-    display_dimensions: typing.Tuple[int, int]
+    dimensions: typing.Tuple[int, int]
+    half_dimensions: typing.Tuple[int, int]
     mg: geometry.MoonGeometry
     display_tz: tzinfo
 
@@ -91,7 +92,7 @@ class Annotate:
         return [
             '-font', 'Helvetica',
             '-fill', self.color,
-            '-pointsize', '40',
+            '-pointsize', str(self.dimensions[0] // 50),
             '-gravity', 'SouthWest',
             '-draw', f'text 20,160 "q: {self.mg.parallactic_angle:0.1f}deg"',
             '-draw', f'text 20,110 "Alt: {self.mg.altitude:0.1f}deg"',

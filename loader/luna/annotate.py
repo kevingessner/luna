@@ -94,7 +94,7 @@ class Annotate:
             '-fill', self.color,
             '-pointsize', str(self.dimensions[0] // 50),
             '-gravity', 'SouthWest',
-            '-draw', f'text 20,160 "q: {self.mg.parallactic_angle:0.1f}deg"',
+            '-draw', f'''text 20,160 "{abs(self.mg.latitude):0.1f} {'N' if self.mg.latitude >= 0 else 'S'}, {abs(self.mg.longitude):0.1f} {'E' if self.mg.longitude >= 0 else 'W'}"''',
             '-draw', f'text 20,110 "Alt: {self.mg.altitude:0.1f}deg"',
             '-draw', f'text 20,60 "Az: {self.mg.azimuth:0.1f}deg"',
             '-draw', f'''text 20,10 "{self.mg.dt.astimezone(self.display_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}"''',

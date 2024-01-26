@@ -41,6 +41,7 @@ def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: st
     max_size = annot.azimuth_r1 * 2
     args = ('convert',
         input_img_path,
+        '-filter', 'catrom', # faster and sharper than the default
         '-resize', f'{max_size}x{max_size}^',
         # Center the (square) moon image on a canvas the size of the display,
         # rotated by the "position angle" (from the ephemeris; CW) and

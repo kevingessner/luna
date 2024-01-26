@@ -75,25 +75,32 @@ if __name__ == '__main__':
         (w, h) = s.split('x')
         return (int(w), int(h))
 
+    utc_now = datetime.now(timezone.utc)
+    output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
+
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--dimensions", metavar='WxH', help="'WxH' in pixels", default='{0}x{1}'.format(*DISPLAY_DIMENSIONS_PX), type=_parse_dims)
+    parser.add_argument("--date", help="date and time in UTC", default=utc_now, type=datetime.fromisoformat)
+    parser.add_argument("--output", help="full path for the output image", default=output_img_path, type=str)
     parser.add_argument("call_with_image", help="after the image is made, execute this command line, with the image file name appended as the final argument", default=None, nargs='?')
     args = parser.parse_args()
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
-    os.makedirs(CACHE_DIR, exist_ok=True)
+    output_img_path = args.output
+    os.makedirs(os.path.dirname(output_img_path), exist_ok=True)
 
+    # The parsed datetime will be naive (no tzinfo); make it UTC without adjusting the time.
+    utc_date = args.date.replace(tzinfo=timezone.utc)
     # Get the local timezone for displaying times, or fall back to UTC.
     TZ = datetime.utcnow().astimezone().tzinfo or timezone.utc
+    log.info(f'handling UTC time {utc_date} in timezone {TZ}')
 
-    utc_now = datetime.now(timezone.utc) - timedelta(hours=0)
-    output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
     try:
         latitude, longitude = config.get_location()
         log.info(f'got location ({latitude}, {longitude})')
-        mg = geometry.MoonGeometry.for_datetime(utc_now, latitude, longitude)
+        mg = geometry.MoonGeometry.for_datetime(utc_date, latitude, longitude)
         annot = annotate.Annotate(*args.dimensions, mg, TZ)
         (input_img_path, posangle) = finder.moon_image_for_datetime(mg.dt)
         annotate_image(annot, posangle, input_img_path, output_img_path)
@@ -105,7 +112,7 @@ if __name__ == '__main__':
         else:
             sys.exit(1)
     except:
-            debug.produce_debug_image(args.dimensions, output_img_path, utc_now, ''.join(traceback.format_exc(chain=False, limit=5)))
+            debug.produce_debug_image(args.dimensions, output_img_path, utc_date, ''.join(traceback.format_exc(chain=False, limit=5)))
 
     if args.call_with_image:
         display_image(output_img_path, shlex.split(args.call_with_image))

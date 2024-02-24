@@ -102,6 +102,30 @@ class GeometryTest(unittest.TestCase):
 
         self.assertAlmostEqual(set_mg.azimuth, 242.60, places=2)
 
+    def test_illumination(self):
+        dt = datetime(2024, 2, 24, 7, 30, tzinfo=timezone(timedelta(hours=-4)))
+        mg = geometry.MoonGeometry.for_datetime(dt, 40.8, -73.95)
+        self.assertAlmostEqual(mg.percent_illuminated, 99.8, places=1)
+
+        dt = datetime(2024, 2, 16, 0, 0, tzinfo=timezone(timedelta(hours=-4)))
+        mg = geometry.MoonGeometry.for_datetime(dt, 40.8, -73.95)
+        self.assertAlmostEqual(mg.percent_illuminated, 50.4, places=1)
+
+        dt = datetime(2024, 2, 10, 18, 0, tzinfo=timezone(timedelta(hours=-4)))
+        mg = geometry.MoonGeometry.for_datetime(dt, 40.8, -73.95)
+        self.assertAlmostEqual(mg.percent_illuminated, 2.8, places=1)
+
+        dt = datetime(2024, 2, 9, 18, 0, tzinfo=timezone(timedelta(hours=-4)))
+        mg = geometry.MoonGeometry.for_datetime(dt, 40.8, -73.95)
+        self.assertAlmostEqual(mg.percent_illuminated, 0.2, places=1)
+
+        dt = datetime(2024, 2, 8, 18, 0, tzinfo=timezone(timedelta(hours=-4)))
+        mg = geometry.MoonGeometry.for_datetime(dt, 40.8, -73.95)
+        self.assertAlmostEqual(mg.percent_illuminated, 0.6, places=1)
+
+        dt = datetime(2024, 2, 2, 18, 0, tzinfo=timezone(timedelta(hours=-4)))
+        mg = geometry.MoonGeometry.for_datetime(dt, 40.8, -73.95)
+        self.assertAlmostEqual(mg.percent_illuminated, 45.3, places=1)
 
 if __name__ == '__main__':
     unittest.main()

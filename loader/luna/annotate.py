@@ -12,7 +12,7 @@ class Annotate:
     azimuth_r1: int
     azimuth_r2: int # inner and outer radius of the azimuth line and text
     indicator_r = 10 # radius of the altitude indicator dot
-    color = '#bbb'
+    color = '#eee' # color of text, indicator, etc
     dimensions: typing.Tuple[int, int]
     half_dimensions: typing.Tuple[int, int]
     mg: geometry.MoonGeometry
@@ -27,6 +27,7 @@ class Annotate:
         self.half_dimensions = (display_w//2, display_h//2)
         self.mg = mg
         self.display_tz = display_tz
+        self.color = _color_for_illum(mg.percent_illuminated)
 
     def draw_annotations(self):
         '''Returns a list of ImageMagick commands to draw all the annotations on the image.'''
@@ -339,3 +340,29 @@ def _can_draw_text_at_azimuth(az: float, delta: float, check_azs: typing.List[fl
             # Corner case B: a check_az is close to 360, so the upper bound wraps around 0
             or (360 - caz < delta and az < (caz + delta) % 360)
             for caz in check_azs)
+
+def _color_for_illum(illum_pct: float) -> str:
+    '''Maps the moon's illuminated percentage in [0, 100] to a text color: brighter moon, brighter color.
+
+    >>> _color_for_illum(0) # new moon
+    '#bbb'
+    >>> _color_for_illum(25)
+    '#bbb'
+    >>> _color_for_illum(50) # first quarter / last quarter
+    '#ccc'
+    >>> _color_for_illum(75)
+    '#ddd'
+    >>> _color_for_illum(90)
+    '#eee'
+    >>> _color_for_illum(100) # full moon
+    '#eee'
+    '''
+    if illum_pct <= 25:
+        return '#bbb'
+    if illum_pct <= 50:
+        return '#ccc'
+    if illum_pct <= 75:
+        return '#ddd'
+    return '#eee'
+
+

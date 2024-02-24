@@ -109,6 +109,25 @@ class MoonGeometry:
             dtan(self.latitude) * dcos(self.moon_dec) - dsin(self.moon_dec) * dcos(self.hour_angle)))
 
     @cached_property
+    def percent_illuminated(self) -> float:
+        '''Returns a number [0, 100] for the percentage of the moon's surface illumated.'''
+
+
+        elong = astral_moon.phase(self.dt.astimezone(timezone.utc))
+        '''
+        Astral's 'phase':
+        0 .. 6.99     New moon
+        7 .. 13.99    First quarter
+        14 .. 20.99   Full moon
+        21 .. 27.99   Last quarter
+
+        This is the elongation (the angle between the moon and sun, centered at earth), but ranging in [0, 28) instead of [0, 360).
+        Scale it to the full circle, then calculate the illuminated percent via trigonometry.
+        '''
+        elong_deg = elong * 360 / 28
+        return 100 * (1 - dcos(elong_deg)) / 2
+
+    @cached_property
     def nearest_rise_and_set(self) -> typing.Tuple['MoonGeometry', 'MoonGeometry']:
         '''Returns a tuple of MoonGeometry of the moon rise and moon set to be displayed: the most-recent rise if the moon
         is up at `self.dt`, otherwise the next rise; and the set following that rise.'''

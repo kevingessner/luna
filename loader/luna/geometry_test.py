@@ -82,6 +82,15 @@ class GeometryTest(unittest.TestCase):
             self.assertEqual(datetime(2023, 1, 27, 10, 24, tzinfo=timezone.utc), rise_mg.dt)
             self.assertEqual(datetime(2023, 1, 28, 0, 21, tzinfo=timezone.utc), set_mg.dt)
 
+        with self.subTest("moon is up; rise at essentially the given time, set same day -- tolerance test"):
+            dt = datetime(2024, 12, 19, 0, 56, 56, tzinfo=timezone.utc)
+            pos = astral_moon.moon_position(geometry.days_since_j2000(dt))
+            mg = geometry.MoonGeometry(dt, 41.93, -74.04, geometry.radians_to_hours(pos.right_ascension), math.degrees(pos.declination))
+            self.assertGreater(mg.altitude, 0)
+            (rise_mg, set_mg) = mg.nearest_rise_and_set
+            self.assertEqual(datetime(2024, 12, 19, 0, 57, tzinfo=timezone.utc), rise_mg.dt)
+            self.assertEqual(datetime(2024, 12, 19, 15, 46, tzinfo=timezone.utc), set_mg.dt)
+
     def test_rise_set_overlap(self):
         # Here's a case that displays in a confusing way.  At 9:12am EDT on 2023-06-07, the moon had set around 30
         # minutes earlier, and is at 240deg azimuth.  The following rise and set are the next day at 12:17am and 10:01am

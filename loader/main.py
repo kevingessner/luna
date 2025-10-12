@@ -112,7 +112,8 @@ if __name__ == '__main__':
         else:
             sys.exit(1)
     except:
-            debug.produce_debug_image(args.dimensions, output_img_path, utc_date, ''.join(traceback.format_exc(chain=False, limit=5)))
+        log.error('failed', exc_info=True)
+        debug.produce_debug_image(args.dimensions, output_img_path, utc_date, ''.join(traceback.format_exc(chain=False, limit=5)))
 
     if args.call_with_image:
         display_image(output_img_path, shlex.split(args.call_with_image))

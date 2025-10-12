@@ -135,6 +135,11 @@ class MoonGeometry:
         tz = timezone.utc
         dt = self.dt.astimezone(tz)
         loc = astral.LocationInfo('', '', tz.tzname(dt), self.latitude, self.longitude)
+        # Times returned by astral.moon are to the nearest minute, so if `dt` is almost
+        # exactly the time of moonrise, we can get spurious mistakes about when the 'next'
+        # rise is.  So consider times different only if they are more than this tolerance
+        # apart.
+        tolerance = timedelta(minutes=1)
 
         try:
             rise_dt = astral_moon.moonrise(loc.observer, dt, tz)
@@ -143,12 +148,12 @@ class MoonGeometry:
             rise_dt = None
         if self.altitude > 0: # moon is up
             # Find the most-recent past moonrise, which may be yesterday.
-            if rise_dt is None or rise_dt > dt:
+            if rise_dt is None or (rise_dt > dt and abs(rise_dt - dt) > tolerance):
                 rise_dt = astral_moon.moonrise(loc.observer, dt - timedelta(days=1), tz)
             log.info(f'most recent rise: {rise_dt}')
         else: # moon is not up
             # Find the next moonrise, which may be tomorrow.
-            if rise_dt is None or rise_dt < dt:
+            if rise_dt is None or (rise_dt < dt and abs(rise_dt - dt) > tolerance):
                 rise_dt = astral_moon.moonrise(loc.observer, dt + timedelta(days=1), tz)
             log.info(f'next rise: {rise_dt}')
         assert rise_dt is not None

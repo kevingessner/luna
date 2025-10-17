@@ -49,4 +49,5 @@ def moon_image_for_datetime(dt: datetime) -> typing.Tuple[str, float]:
     log.info(f'best image candidate: {best.time}')
     log.info(f'  phase: {best.phase} vs {target.phase} ({phase_distance(target.phase, best.phase)})')
     log.info(f'  subearth: {best.subearth} vs {target.subearth} ({lat_lon_distance(target.subearth, best.subearth)})')
+    log.info(f'  subsolar: {best.subsolar} vs {target.subsolar} ({lat_lon_distance(target.subsolar, best.subsolar)})')
     return (best.library.image_path(best), target.posangle)

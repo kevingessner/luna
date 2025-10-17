@@ -14,6 +14,7 @@ class MoonImageInfo:
     phase: float # percentage from 0-100
     age: float # from 0-28
     subearth: typing.Tuple[float, float] # lat, lon
+    subsolar: typing.Tuple[float, float] # lat, lon
     posangle: float
     index: typing.Optional[str] = None
     library: typing.Optional['Library'] = None
@@ -21,7 +22,7 @@ class MoonImageInfo:
     @classmethod
     def from_json(cls, d):
         if 'time' in d:
-            return MoonImageInfo(**{k: d[k] for k in ('time', 'phase', 'age', 'subearth', 'posangle')})
+            return MoonImageInfo(**{k: d[k] for k in ('time', 'phase', 'age', 'subearth', 'subsolar', 'posangle')})
         if 'lon' in d:
             return (d['lat'], d['lon'])
         return d

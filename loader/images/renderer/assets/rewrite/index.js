@@ -15,11 +15,11 @@ function setSubEarth(lat, lon) {
   const pos = _latLonToSpherical(1, lat, lon)
   camera.position.setFromSpherical(pos);
   camera.lookAt(0,0,0);
-  //this.earthLight.position.setFromSpherical(pos);
 }
 function setSubSun(lat, lon) {
   // move the sunLight so it is above the "sub solar" point on the moon
-  sunLight.position.setFromSpherical(_latLonToSpherical(1, lat, lon));
+  sunLight.position.setFromSpherical(_latLonToSpherical(10, lat, lon));
+  // move the earthLight to the opposide side for some contrasty glow
   earthLight.position.setFromSpherical(_latLonToSpherical(1, lat, lon+180));
 }
 
@@ -29,28 +29,37 @@ var width = 1024, height = 1024; // TODO from the body
 // scene and renderer
 
 const renderer = new THREE.WebGLRenderer({
-	antialias: false,
-	alpha: true,
-	precision: "highp"
+	antialias: true,
+	alpha: true
 });
 renderer.setSize(width, height);
-renderer.setPixelRatio(1);
+renderer.setPixelRatio(2);
 renderer.toneMapping = THREE.LinearToneMapping;
+renderer.toneMappingExposure = 4;
+renderer.setClearColor(16711680, 0);
+//renderer.outputColorSpace = THREE.SRGBColorSpace ;
 document.querySelector('#render').appendChild(renderer.domElement);
+
+//document.querySelector('#debug').innerText = JSON.stringify(renderer.capabilities);
+const gl = renderer.getContext();
+const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+document.querySelector('#debug').innerText = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+
 const scene = new THREE.Scene();
+
+// const environment = new RoomEnvironment();
+// const pmremGenerator = new THREE.PMREMGenerator( renderer );
+
+// const envMap = pmremGenerator.fromScene( environment ).texture;
+// scene.environment = envMap;
+// scene.environmentIntensity = 0.1;
 
 const frustumSize = globeRadius*2;
 const camera = new THREE.OrthographicCamera(frustumSize / - 2, frustumSize / 2, frustumSize / 2, frustumSize / - 2, 0, 1000);
 
-
-// const composer = new THREE.EffectComposer(renderer);
-// composer.setSize(width, height);
-// composer.addPass(new THREE.RenderPass(scene, camera));
-
-// const shaderPass = new THREE.ShaderPass(THREE.CopyShader);
-// shaderPass.renderToScreen = true;
-// composer.addPass(shaderPass);
-
+function render() {
+	renderer.render( scene, camera );
+}
 
 // scene elements
 
@@ -63,21 +72,22 @@ setSubEarth(0,0);
 setSubSun(0,-90);
 
 
-function render() {
-	renderer.render( scene, camera );
-}
-
 const loader = new THREE.TextureLoader();
 
-const geometry = new THREE.SphereGeometry(globeRadius); 
-const meshMaterial = new THREE.MeshPhongMaterial( { color: 0x156289, emissive: 0x072534, side: THREE.DoubleSide, flatShading: true } )
-const moonMaterial = new THREE.MeshStandardMaterial({
+const geometry = new THREE.SphereGeometry(globeRadius, 90, 45); 
+const map = loader.load('../webgl/textures/moon_lroc_color_poles_4k.png', (t) => {
+	t.colorSpace = THREE.SRGBColorSpace;
+	moonMaterial.needsUpdate = true;
+	render();
+});
+const moonMaterial = new THREE.MeshPhysicalMaterial({
 	color: '#ffffff',
-	map: loader.load('../webgl/textures/moon_lroc_color_poles_4k.png', render),
+	map: map,
 	normalMap: loader.load('../webgl/textures/moon_ldem_normal.png', render),
-	normalScale: new THREE.Vector2(-1,-1),
+	normalScale: new THREE.Vector2(-.7,.7),
 	roughness: 1,
 	metalness: 0,
+	reflectivity: 0
 });
 const globe = new THREE.Mesh( geometry, moonMaterial );
 scene.add(globe);
@@ -85,4 +95,4 @@ render();
 
 
 export {camera, globe, scene, setSubEarth, setSubSun, render};
-window.moon = {setSubEarth, setSubSun, render};
+window.moon = {setSubEarth, setSubSun, render, renderer, scene};

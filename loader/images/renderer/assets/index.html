@@ -202,7 +202,7 @@ document.querySelector('#webgl_globe_module').setAttribute('data-react-props', J
             }
           }
         ]
-      },
+      }/*,
       "phases": {
         "title": "Phases ipsum",
         "description": "Tristique ultricies nascetur et, diam, egestas vut lorem, porttitor. Sociis?",
@@ -214,7 +214,7 @@ document.querySelector('#webgl_globe_module').setAttribute('data-react-props', J
           "image_src": "http://placehold.it/400x300",
           "description": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
         }
-      }
+      }*/
     },
     "moon_phases": [
       {
@@ -372,6 +372,7 @@ document.querySelector('#webgl_globe_module').setAttribute('data-react-props', J
         { "name": "structure", "meshes": [] }
       ],
       "meshes": [
+	  /*
         {
           "name": "solid_inner_core",
           "type": "shell",
@@ -436,6 +437,7 @@ document.querySelector('#webgl_globe_module').setAttribute('data-react-props', J
           "computeTangents": false,
           "partNames": "upper_mantle"
         },
+		*/
         {
           "name": "anorthositic_crust",
           "type": "shell",
@@ -679,12 +681,12 @@ document.querySelector('#webgl_globe_module').setAttribute('data-react-props', J
           "needsTangents": true,
           "lights": true,
           "opacityFactor": 1.0,
-          "visible": true,
+          "visible": false,
           "uniforms": {
             "uCutawayRadius": 1.7371,
             "uCutawayThreshold": 0,
             "uNormalMapFactor": 0.125,
-            "uAlbedoColor": [0.337255, 0.286275, 0.282353],
+            "uAlbedoColor": [1,0,0],//[0.337255, 0.286275, 0.282353],
             "uMetalnessFactor": 0
           }
         },
@@ -700,7 +702,7 @@ document.querySelector('#webgl_globe_module').setAttribute('data-react-props', J
           "needsTangents": true,
           "lights": true,
           "opacityFactor": 1.0,
-          "visible": true,
+          "visible": false,
           "uniforms": {
             "uCutawayRadius": 1.7371,
             "uCutawayThreshold": 0,

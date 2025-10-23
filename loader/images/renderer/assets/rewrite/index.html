@@ -4,14 +4,27 @@
 <meta content='width=device-width, initial-scale=1, maximum-scale=1' name='viewport'>
 <meta content='text/html; charset=utf-8' http-equiv='Content-Type'>
 <style type="text/css">
+body {
+background: transparent;
+}
+canvas {
+margin: auto;
+}
+#debug {
+word-wrap: break-word;
+min-height: 0;
+margin: 0;
+}
 </style>
 </head>
 <body>
+<p id="debug"></p>
 <div id="render"></div>
 <script type="importmap">
 {
   "imports": {
-    "three": "./three.module.js"
+    "three": "./three.module.js",
+    "postprocessing": "./postprocessing.js"
 	}
 	}
 	</script>

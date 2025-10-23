@@ -10,7 +10,7 @@ import astral.moon
 from . import libraries
 
 
-#__all__ = ('moon_eph_for_datetime')
+__all__ = ('moon_eph_for_datetime')
 
 log = logging.getLogger(__name__)
 

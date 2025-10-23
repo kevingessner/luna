@@ -18,6 +18,9 @@ def moon_image_for_datetime(dt: datetime, path: str) -> typing.Tuple[str, float]
     log.info(f'  subearth: {target.subearth}')
     log.info(f'  subsolar: {target.subsolar}')
     log.info(f'  posangle: {target.posangle}')
+    # TODO serve files in python
+    # TODO pass params via URL
+    # TODO use chromium: xvfb-run chromium --screenshot --headless=new --no-first-run --hide-scrollbars --screen-info={1600x1200} --default-background-color=00000000 --ignore-gpu-blocklist http://127.0.0.1:8001/index.html
     args = ('node',
         os.path.join(os.path.dirname(__file__), "renderer", "bin", "index.mjs"),
         '--subEarthLatitude=' + str(target.subearth[0]),

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 function deg2rad(deg) {
-	return deg * Math.PI / 180.0;
+    return deg * Math.PI / 180.0;
 }
 
 function _latLonToSpherical(rad, lat, lon) {
@@ -29,8 +29,8 @@ var width = 1024, height = 1024; // TODO from the body
 // scene and renderer
 
 const renderer = new THREE.WebGLRenderer({
-	antialias: true,
-	alpha: true
+    antialias: true,
+    alpha: true
 });
 renderer.setSize(width, height);
 renderer.setPixelRatio(2);
@@ -58,7 +58,7 @@ const frustumSize = globeRadius*2;
 const camera = new THREE.OrthographicCamera(frustumSize / - 2, frustumSize / 2, frustumSize / 2, frustumSize / - 2, 0, 1000);
 
 function render() {
-	renderer.render( scene, camera );
+    renderer.render( scene, camera );
 }
 
 // scene elements
@@ -67,7 +67,7 @@ const sunLight = new THREE.DirectionalLight(0xffffff, 1);
 scene.add(sunLight);
 const earthLight = new THREE.DirectionalLight(0xffffff, 0.05);
 scene.add(earthLight);
-	  
+
 setSubEarth(0,0);
 setSubSun(0,-90);
 
@@ -76,18 +76,18 @@ const loader = new THREE.TextureLoader();
 
 const geometry = new THREE.SphereGeometry(globeRadius, 90, 45); 
 const map = loader.load('../webgl/textures/moon_lroc_color_poles_4k.png', (t) => {
-	t.colorSpace = THREE.SRGBColorSpace;
-	moonMaterial.needsUpdate = true;
-	render();
+    t.colorSpace = THREE.SRGBColorSpace;
+    moonMaterial.needsUpdate = true;
+    render();
 });
 const moonMaterial = new THREE.MeshPhysicalMaterial({
-	color: '#ffffff',
-	map: map,
-	normalMap: loader.load('../webgl/textures/moon_ldem_normal.png', render),
-	normalScale: new THREE.Vector2(-.7,.7),
-	roughness: 1,
-	metalness: 0,
-	reflectivity: 0
+    color: '#ffffff',
+    map: map,
+    normalMap: loader.load('../webgl/textures/moon_ldem_normal.png', render),
+    normalScale: new THREE.Vector2(-.7,.7),
+    roughness: 1,
+    metalness: 0,
+    reflectivity: 0
 });
 const globe = new THREE.Mesh( geometry, moonMaterial );
 scene.add(globe);

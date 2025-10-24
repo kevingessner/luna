@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 
+const params = new URL(window.location).searchParams;
+
 const globeRadius = 1;
-var width = 1024, height = 1024; // TODO from the body
+var size = Math.min(window.innerHeight, window.innerWidth)-2;
 
 // scene and renderer
 
@@ -9,7 +11,7 @@ const renderer = new THREE.WebGLRenderer({
     antialias: true,
     alpha: true
 });
-renderer.setSize(width, height);
+renderer.setSize(size, size);
 renderer.setPixelRatio(1);
 renderer.toneMapping = THREE.LinearToneMapping;
 renderer.toneMappingExposure = 4;
@@ -17,10 +19,12 @@ renderer.setClearColor(16711680, 0);
 renderer.localClippingEnabled = true;
 document.querySelector('#render').appendChild(renderer.domElement);
 
-//document.querySelector('#debug').innerText = JSON.stringify(renderer.capabilities);
-const gl = renderer.getContext();
-const dbg = gl.getExtension("WEBGL_debug_renderer_info");
-document.querySelector('#debug').innerText = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+if (params.has('debug')) {
+    document.querySelector('#debug').innerText = JSON.stringify(renderer.capabilities);
+    const gl = renderer.getContext();
+    const dbg = gl.getExtension("WEBGL_debug_renderer_info");
+    document.querySelector('#debug').innerText += gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+}
 
 const scene = new THREE.Scene();
 
@@ -97,9 +101,12 @@ function setSubSun(lat, lon) {
   moonMaterialBack.clippingPlanes = [clippingPlane().negate()];
 }
 
-
-setSubEarth(0,0);
-setSubSun(0,-90);
+const subEarthLat = parseInt(params.get('subearth_lat') || '0');
+const subEarthLon = parseInt(params.get('subearth_lon') || '0');
+const subSolarLat = parseInt(params.get('subsolar_lat') || '0');
+const subSolarLon = parseInt(params.get('subsolar_lon') || '-90');
+setSubEarth(subEarthLat, subEarthLon);
+setSubSun(subSolarLat, subSolarLon);
 render();
 
 

@@ -74,7 +74,7 @@ def seek(eph_lines: typing.Iterable[str], dt: datetime) -> libraries.MoonImageIn
     seek_dt = dt.replace(minute=0, second=0)
     if dt.minute >= 30:
         seek_dt += timedelta(hours=1)
-    dt_str = seek_dt.strftime(' %Y-%b-%d %H:%M')
+    dt_str = seek_dt.strftime('%Y-%b-%d %H:%M')
     for info in iterate(eph_lines):
         if info.time.startswith(dt_str):
             return info

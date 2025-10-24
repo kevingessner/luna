@@ -37,12 +37,9 @@ log = logging.getLogger(__name__)
 
 def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: str, output_img_path: str, addl: typing.List[str]=[]):
     '''Apply the operations and annotations for the current time, date, and moon position.'''
-    max_size = annot.max_moon_size
     args = ('convert',
         input_img_path,
         *addl,
-        '-filter', 'catrom', # faster and sharper than the default
-        '-resize', f'{max_size}x{max_size}^',
         # Center the (square) moon image on a canvas the size of the display,
         # rotated by the "position angle" (from the ephemeris; CW) and
         # "parallactic angle" (calculated; CCW) that account for the tilt of the illuminated limb.
@@ -93,20 +90,28 @@ if __name__ == '__main__':
         log.info(f'got location ({latitude}, {longitude})')
         mg = geometry.MoonGeometry.for_datetime(utc_date, latitude, longitude)
         annot = annotate.Annotate(*args.dimensions, mg, TZ)
+        max_size = annot.max_moon_size
 
         (library_input_img_path, posangle) = finder.moon_image_for_datetime(mg.dt)
-        annotate_image(annot, posangle, library_input_img_path, output_img_path + ".library.bmp")
+        annotate_image(annot, posangle, library_input_img_path, output_img_path + ".library.bmp", [
+            '-filter', 'catrom', # faster and sharper than the default
+            '-resize', f'{max_size}x{max_size}^',
+        ])
 
-        (rendered_input_img_path, posangle) = renderer.moon_image_for_datetime(mg.dt, os.path.join(CACHE_DIR, "tmp-rendered.png"))
+        (rendered_input_img_path, posangle) = renderer.moon_image_for_datetime(mg.dt, os.path.join(CACHE_DIR, "tmp-rendered.png"), int(max_size))
         annotate_image(annot, posangle, rendered_input_img_path, output_img_path + ".rendered.bmp", [
+                # Trim off the extra bottom of the image.
+                '-background', 'transparent',
+                '-gravity', 'north',
+                '-extent', '%dx%d' % (max_size, max_size),
                 # Increase the contrast for better display on the 16-color display.
-                '-contrast',
+               # '-contrast',
                 # 'Gray' makes for a nice contrasty conversion to grayscale
                 '-colorspace', 'Gray',
                 # Stretch the lightest part of the image to white, and increase the gamma to lighten the dark parts of the moon
                 # without blowing out the light parts.
-                '-gamma', '1.3',
-                '-auto-level',
+                #'-gamma', '1.3',
+               # '-auto-level',
             ])
     except config.LunaNeedsConfigException as e:
         log.error('not configured', exc_info=e)

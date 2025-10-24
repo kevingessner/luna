@@ -3,27 +3,30 @@ import * as THREE from 'three';
 const params = new URL(window.location).searchParams;
 
 const globeRadius = 1;
-var size = Math.min(window.innerHeight, window.innerWidth)-2;
+var size = Math.min(window.outerHeight, window.outerWidth)-2;
 
 // scene and renderer
 
 const renderer = new THREE.WebGLRenderer({
     antialias: true,
-    alpha: true
+    alpha: false
 });
 renderer.setSize(size, size);
 renderer.setPixelRatio(1);
 renderer.toneMapping = THREE.LinearToneMapping;
 renderer.toneMappingExposure = 4;
-renderer.setClearColor(16711680, 0);
+renderer.setClearColor(0x111111, 0);
 renderer.localClippingEnabled = true;
 document.querySelector('#render').appendChild(renderer.domElement);
 
 if (params.has('debug')) {
-    document.querySelector('#debug').innerText = JSON.stringify(renderer.capabilities);
+    var debugText = '';
+    debugText += 'size=' + size;
+    debugText += JSON.stringify(renderer.capabilities);
     const gl = renderer.getContext();
     const dbg = gl.getExtension("WEBGL_debug_renderer_info");
-    document.querySelector('#debug').innerText += gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+    debugText += gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL);
+    document.querySelector('#debug').innerText = debugText;
 }
 
 const scene = new THREE.Scene();
@@ -38,7 +41,7 @@ function render() {
 
 // scene elements
 
-const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+const sunLight = new THREE.DirectionalLight(0xffffff, 2);
 scene.add(sunLight);
 const earthLight = new THREE.DirectionalLight(0xfffffff, 0.05);
 scene.add(earthLight);
@@ -46,18 +49,23 @@ scene.add(earthLight);
 const loader = new THREE.TextureLoader();
 
 const geometry = new THREE.SphereGeometry(globeRadius, 90, 45);
-const map = loader.load('../webgl/textures/moon_lroc_color_poles_4k.png', (t) => {
+loader.load('../webgl/textures/moon_lroc_color_poles_4k.png', (t) => {
     t.colorSpace = THREE.SRGBColorSpace;
-    moonMaterialFront.needsUpdate = true;
-    moonMaterialBack.needsUpdate = true;
+    t.minFilter = THREE.NearestFilter;
+    moonMaterialFront.map = moonMaterialBack.map = t;
+    moonMaterialFront.needsUpdate = moonMaterialBack.needsUpdate = true;
+    render();
+});
+loader.load('../webgl/textures/moon_ldem_normal.png', (t) => {
+    t.minFilter = THREE.NearestFilter;
+    moonMaterialFront.normalMap = moonMaterialBack.normalMap = t;
+    moonMaterialFront.needsUpdate = moonMaterialBack.needsUpdate = true;
     render();
 });
 const clippingPlane = () => new THREE.Plane(sunLight.position.clone(), -0.001);
 const moonMaterialFront = new THREE.MeshPhysicalMaterial({
     color: '#ffffff',
-    map: map,
-    normalMap: loader.load('../webgl/textures/moon_ldem_normal.png', render),
-    normalScale: new THREE.Vector2(-.7,.7),
+    normalScale: new THREE.Vector2(-1.7,1.7),
     roughness: 1,
     metalness: 0,
     reflectivity: 0,
@@ -67,7 +75,7 @@ const moonMaterialFront = new THREE.MeshPhysicalMaterial({
 const moonMaterialBack = moonMaterialFront.clone();
 moonMaterialBack.setValues({
     color: '#ffffff',
-    normalScale: new THREE.Vector2(-.15,.15),
+    normalScale: new THREE.Vector2(-.2,.2),
     clippingPlanes: [clippingPlane().negate()]
 });
 const globeFront = new THREE.Mesh( geometry, moonMaterialFront );
@@ -101,10 +109,10 @@ function setSubSun(lat, lon) {
   moonMaterialBack.clippingPlanes = [clippingPlane().negate()];
 }
 
-const subEarthLat = parseInt(params.get('subearth_lat') || '0');
-const subEarthLon = parseInt(params.get('subearth_lon') || '0');
-const subSolarLat = parseInt(params.get('subsolar_lat') || '0');
-const subSolarLon = parseInt(params.get('subsolar_lon') || '-90');
+const subEarthLat = parseFloat(params.get('subearth_lat') || '0');
+const subEarthLon = parseFloat(params.get('subearth_lon') || '0');
+const subSolarLat = parseFloat(params.get('subsolar_lat') || '0');
+const subSolarLon = parseFloat(params.get('subsolar_lon') || '-90');
 setSubEarth(subEarthLat, subEarthLon);
 setSubSun(subSolarLat, subSolarLon);
 render();

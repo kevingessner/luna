@@ -10,12 +10,7 @@ Powered by a Raspberry Pi with a Waveshare e-paper display.
 
 ## Build and install
 
-Depends on a few packages: `sudo apt-get install autoconf imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35`
-
-Clone the source respository and run `git submodule update --init` to fetch the image library
-
-> The images are about 18GB.  Fetching the submodule also requires about 18GB of git repository overhead.
-> To just get the images, without a repository, run `./loader/images/fetch-images.sh` instead of `git submodule`.
+Depends on a few packages: `sudo apt-get install autoconf imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod`
 
 To compile luna: `make`
 
@@ -44,9 +39,10 @@ This can be safely cleared at any time the process is not actively running.
 
 The various components can be developed independently:
 
-- `bcm2835-1.71/`: Broadcom BCM 2835 library from http://www.airspayce.com/mikem/bcm2835/
-    - required by the waveshare code
-    - build with `make bcm2835`
+- `libgpiod-1.6.x/`: libgpiod from https://github.com/brgl/libgpiod/tree/v1.6.x
+    - required by the waveshare code -- v2.x from `apt` is too new and incompatible
+    - ran `autoupdate` before checking in
+    - build with `make libgpiod`
 - `waveshare/`: C code based on Waveshare's RPi library at https://github.com/waveshare/IT8951-ePaper/tree/master/Raspberry
     - builds `bin/epd`, which displays a bitmap on the e-paper display
     - build with `make waveshare` after building `bcm2835` at least once

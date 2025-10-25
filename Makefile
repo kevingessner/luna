@@ -1,22 +1,22 @@
 WAVESHARE=waveshare
-BCM2835=bcm2835-1.71
-BCM2835_BIN=$(PWD)/$(BCM2835)/bin
+LIBGPIOD=$(PWD)/libgpiod-1.6.x
+LIBGPIOD_BIN=$(LIBGPIOD)/bin
 SYSTEMD=systemd/luna.service
 CONFIG_SYSTEMD=systemd/luna-config.service
 PYTHON_VENV=$(PWD)/loader/venv
 
 .PHONY: all
-all: bcm2835 waveshare loader
+all: libgpiod waveshare loader
 
 .PHONY: waveshare
 waveshare:
-	CFLAGS="-L $(BCM2835_BIN)/lib -I $(BCM2835_BIN)/include" $(MAKE) -C waveshare
+	CFLAGS="-L $(LIBGPIOD_BIN)/lib -I $(LIBGPIOD_BIN)/include -Wl,-rpath,$(LIBGPIOD_BIN)/lib" $(MAKE) -C IT8951-ePaper-master/Raspberry LIB=GPIOD
 
-.PHONY: bcm2835
-bcm2835:
-	cd $(BCM2835) && ./configure --prefix=$(BCM2835_BIN)
-	$(MAKE) -C $(BCM2835)
-	$(MAKE) -C $(BCM2835) install
+.PHONY: libgpiod
+libgpiod:
+	cd $(LIBGPIOD) && ./autogen.sh --enable-tools=yes --prefix=$(LIBGPIOD_BIN)
+	$(MAKE) -C $(LIBGPIOD)
+	$(MAKE) -C $(LIBGPIOD) install
 
 .PHONY: loader
 loader: $(PYTHON_VENV)
@@ -34,7 +34,7 @@ $(PYTHON_VENV):
 clean: uninstall
 	rm -f $(SYSTEMD) $(CONFIG_SYSTEMD)
 	rm -rf $(PYTHON_VENV) $(PWD)/loader/__pycache__
-	$(MAKE) -C $(BCM2835) clean || true
+	$(MAKE) -C $(LIBGPIOD) clean || true
 	$(MAKE) -C $(WAVESHARE) clean || true
 
 $(SYSTEMD): systemd/luna.service.tmpl FORCE

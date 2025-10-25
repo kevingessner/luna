@@ -8,10 +8,10 @@ TARGET = $(DIR_BIN)/epd
 CC = gcc
 
 MSG = -g -O3 -Wall
-DEBUG = -D USE_DEBUG
+DEBUG = -D USE_DEBUG -D DEBUG=1
 STD = -std=gnu99
 
-CFLAGS += $(MSG) $(DEBUG) $(STD) -DLIB=GPIOD
+CFLAGS += $(MSG) $(DEBUG) $(STD) -DLIB=GPIOD -DGPIOD
 
 LIB = -lgpiod -lm -lrt -lpthread
 

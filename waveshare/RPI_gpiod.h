@@ -43,7 +43,7 @@
 #define NUM_MAXBUF  4
 #define DIR_MAXSIZ  60
 
-#define GPIOD_DEBUG 0
+#define GPIOD_DEBUG 1
 #if GPIOD_DEBUG 
 	#define GPIOD_Debug(__info,...) printf("Debug: " __info,##__VA_ARGS__)
 #else

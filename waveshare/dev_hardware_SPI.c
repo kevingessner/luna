@@ -48,12 +48,14 @@ HARDWARE_SPI hardware_SPI;
 
 static uint8_t bits = 8; 
 
+#ifndef SPI_CS_HIGH
 #define SPI_CS_HIGH     0x04                //Chip select high  
 #define SPI_LSB_FIRST   0x08                //LSB  
 #define SPI_3WIRE       0x10                //3-wire mode SI and SO same line
 #define SPI_LOOP        0x20                //Loopback mode  
 #define SPI_NO_CS       0x40                //A single device occupies one SPI bus, so there is no chip select 
 #define SPI_READY       0x80                //Slave pull low to stop data transmission  
+#endif
 
 struct spi_ioc_transfer tr;
 
@@ -269,6 +271,7 @@ Info:
 ******************************************************************************/
 int DEV_HARDWARE_SPI_SetBitOrder(SPIBitOrder Order)
 {
+    DEV_HARDWARE_SPI_Debug("before hardware_SPI.mode = 0x%02x\r\n", hardware_SPI.mode);
     if(Order == SPI_BIT_ORDER_LSBFIRST){
         hardware_SPI.mode |= SPI_LSB_FIRST;
         DEV_HARDWARE_SPI_Debug("SPI_LSB_FIRST\r\n");
@@ -277,7 +280,7 @@ int DEV_HARDWARE_SPI_SetBitOrder(SPIBitOrder Order)
         DEV_HARDWARE_SPI_Debug("SPI_MSB_FIRST\r\n");
     }
     
-    // DEV_HARDWARE_SPI_Debug("hardware_SPI.mode = 0x%02x\r\n", hardware_SPI.mode);
+    DEV_HARDWARE_SPI_Debug("hardware_SPI.mode = 0x%02x\r\n", hardware_SPI.mode);
     int fd = ioctl(hardware_SPI.fd, SPI_IOC_WR_MODE, &hardware_SPI.mode);
     DEV_HARDWARE_SPI_Debug("fd = %d\r\n",fd);
     if (fd == -1) {

@@ -10,7 +10,7 @@ all: libgpiod waveshare loader
 
 .PHONY: waveshare
 waveshare:
-	CFLAGS="-L $(LIBGPIOD_BIN)/lib -I $(LIBGPIOD_BIN)/include -Wl,-rpath,$(LIBGPIOD_BIN)/lib" $(MAKE) -C IT8951-ePaper-master/Raspberry LIB=GPIOD
+	CFLAGS="-L $(LIBGPIOD_BIN)/lib -I $(LIBGPIOD_BIN)/include -Wl,-rpath,$(LIBGPIOD_BIN)/lib" $(MAKE) -C waveshare
 
 .PHONY: libgpiod
 libgpiod:

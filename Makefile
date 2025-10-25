@@ -35,6 +35,7 @@ clean: uninstall
 	rm -f $(SYSTEMD) $(CONFIG_SYSTEMD)
 	rm -rf $(PYTHON_VENV) $(PWD)/loader/__pycache__
 	$(MAKE) -C $(LIBGPIOD) clean || true
+	$(MAKE) -C $(LIBGPIOD) distclean || true
 	$(MAKE) -C $(WAVESHARE) clean || true
 
 $(SYSTEMD): systemd/luna.service.tmpl FORCE

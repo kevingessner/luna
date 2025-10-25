@@ -39,9 +39,8 @@ def _render_to_path(moon_info: libraries.MoonImageInfo, path: str, size: int):
             subsolar_lat=moon_info.subsolar[0],
             subsolar_lon=moon_info.subsolar[1],
         ))
-        args = (
-            #'xvfb-run', 'chromium',
-            'google-chrome',
+        browser = ('google-chrome',) if os.environ.get('DISPLAY') else ('xvfb-run', 'chromium')
+        args = browser + (
             '--screenshot=' + path,
             '--headless=new',
             '--no-first-run',

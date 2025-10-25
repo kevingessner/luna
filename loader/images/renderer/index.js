@@ -41,9 +41,9 @@ function render() {
 
 // scene elements
 
-const sunLight = new THREE.DirectionalLight(0xffffff, 2);
+const sunLight = new THREE.DirectionalLight(0xffffff, 3);
 scene.add(sunLight);
-const earthLight = new THREE.DirectionalLight(0xfffffff, 0.05);
+const earthLight = new THREE.DirectionalLight(0xffffff, 0.1);
 scene.add(earthLight);
 
 const loader = new THREE.TextureLoader();
@@ -58,14 +58,27 @@ loader.load('../webgl/textures/moon_lroc_color_poles_4k.png', (t) => {
 });
 loader.load('../webgl/textures/moon_ldem_normal.png', (t) => {
     t.minFilter = THREE.NearestFilter;
-    moonMaterialFront.normalMap = moonMaterialBack.normalMap = t;
-    moonMaterialFront.needsUpdate = moonMaterialBack.needsUpdate = true;
+    moonMaterialBack.normalMap = t;
+    moonMaterialBack.needsUpdate = true;
     render();
 });
+loader.load('../webgl/textures/ldem_displacement.png', (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.minFilter = THREE.NearestFilter;
+    moonMaterialFront.bumpMap = t;
+    moonMaterialFront.needsUpdate = true;
+    render();
+});
+// The "front" (lit side) and "back" (dark side) are rendered separately, to
+// improve the appearance of the terminator.  The back gets a lower-height texture,
+// implemented as a normal rather than bump map, to avoid unrealistic sharp lights
+// on peaks in the dark area.  A bump map for the front side gives good craters.
+// The dividing line is slightly to the dark side so the line between the textures
+// is in the dark zone.
 const clippingPlane = () => new THREE.Plane(sunLight.position.clone(), -0.001);
 const moonMaterialFront = new THREE.MeshPhysicalMaterial({
-    color: '#ffffff',
-    normalScale: new THREE.Vector2(-1.7,1.7),
+    color: '#999999',
+    bumpScale: 30,
     roughness: 1,
     metalness: 0,
     reflectivity: 0,
@@ -74,7 +87,6 @@ const moonMaterialFront = new THREE.MeshPhysicalMaterial({
 });
 const moonMaterialBack = moonMaterialFront.clone();
 moonMaterialBack.setValues({
-    color: '#ffffff',
     normalScale: new THREE.Vector2(-.2,.2),
     clippingPlanes: [clippingPlane().negate()]
 });

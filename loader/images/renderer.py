@@ -8,7 +8,7 @@ import urllib.parse
 from contextlib import contextmanager
 from datetime import datetime
 
-from . import ephemeris, libraries
+from . import ephemeris
 
 
 ASSET_DIR = os.path.join(os.path.dirname(__file__), 'renderer')
@@ -29,7 +29,7 @@ def _serve_assets():
         proc.terminate()
         log.info('terminated server')
 
-def _render_to_path(moon_info: libraries.MoonImageInfo, path: str, size: int):
+def _render_to_path(moon_info: ephemeris.MoonImageInfo, path: str, size: int):
     with _serve_assets() as base_url:
         url = base_url + '?' + urllib.parse.urlencode(dict(
             subearth_lat=moon_info.subearth[0],
@@ -59,7 +59,7 @@ def _render_to_path(moon_info: libraries.MoonImageInfo, path: str, size: int):
         except subprocess.CalledProcessError as e:
             log.error('process failed:\n'+ e.stdout.decode() + '\n' + e.stderr.decode(), exc_info=e)
             raise
-    log.info(f'rendering complete:\n{proc.stdout}\n{proc.stderr}')
+    log.info(f'rendering complete:\n{proc.stdout.decode()}\n{proc.stderr.decode()}')
 
 
 def moon_image_for_datetime(dt: datetime, path: str, size: int) -> typing.Tuple[str, float]:

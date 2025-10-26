@@ -30,8 +30,6 @@ def _serve_assets():
         log.info('terminated server')
 
 def _render_to_path(moon_info: libraries.MoonImageInfo, path: str, size: int):
-    # TODO serve files in python
-    # TODO pass params via URL
     with _serve_assets() as base_url:
         url = base_url + '?' + urllib.parse.urlencode(dict(
             subearth_lat=moon_info.subearth[0],
@@ -39,6 +37,7 @@ def _render_to_path(moon_info: libraries.MoonImageInfo, path: str, size: int):
             subsolar_lat=moon_info.subsolar[0],
             subsolar_lon=moon_info.subsolar[1],
         ))
+        # Attempt to distinguish WSL dev machine from headless Raspberry Pi
         browser = ('google-chrome',) if os.environ.get('DISPLAY') else ('xvfb-run', 'chromium')
         args = browser + (
             '--screenshot=' + path,

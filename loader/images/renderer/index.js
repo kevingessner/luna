@@ -8,8 +8,8 @@ var size = Math.min(window.outerHeight, window.outerWidth)-2;
 // scene and renderer
 
 const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: false
+    antialias: false,
+    alpha: true
 });
 renderer.setSize(size, size);
 renderer.setPixelRatio(1);
@@ -87,7 +87,7 @@ const moonMaterialFront = new THREE.MeshPhysicalMaterial({
 });
 const moonMaterialBack = moonMaterialFront.clone();
 moonMaterialBack.setValues({
-    normalScale: new THREE.Vector2(-.2,.2),
+    normalScale: new THREE.Vector2(-.3,.3),
     clippingPlanes: [clippingPlane().negate()]
 });
 const globeFront = new THREE.Mesh( geometry, moonMaterialFront );
@@ -117,6 +117,7 @@ function setSubSun(lat, lon) {
   sunLight.position.setFromSpherical(_latLonToSpherical(10, lat, lon));
   // move the earthLight to the opposide side for some contrasty glow
   earthLight.position.setFromSpherical(_latLonToSpherical(1, -lat, lon+180));
+  // reset clipping planes to the new terminator
   moonMaterialFront.clippingPlanes = [clippingPlane()];
   moonMaterialBack.clippingPlanes = [clippingPlane().negate()];
 }

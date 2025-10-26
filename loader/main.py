@@ -42,12 +42,13 @@ def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: st
     max_size = annot.max_moon_size
     args = ('convert',
         input_img_path,
-	# Trim off the extra bottom of the image.
-	'-background', 'transparent',
-	'-gravity', 'north',
-	'-extent', '%dx%d' % (max_size, max_size),
-	# 'Gray' makes for a nice contrasty conversion to grayscale
-	'-colorspace', 'Gray',
+        # Trim off the extra bottom of the image.
+        '-background', 'transparent',
+        '-gravity', 'north',
+        '-extent', '%dx%d' % (max_size, max_size),
+        # 'Gray' makes for a nice contrasty conversion to grayscale
+        '-colorspace', 'Gray',
+        '-normalize',
         # Center the (now-square) moon image on a canvas the size of the display,
         # rotated by the "position angle" (from the ephemeris; CW) and
         # "parallactic angle" (calculated; CCW) that account for the tilt of the illuminated limb.
@@ -66,9 +67,7 @@ def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: st
 def display_image(img_path: str, args):
     args = args + [img_path]
     log.info(f'displaying {args}')
-    # epd hangs occasionally. It takes <20s on a successful run,
-    # so kill it after 30.  The next cycle will try again.
-    subprocess.run(args, check=True, timeout=30)
+    subprocess.run(args, check=True, timeout=300)
 
 if __name__ == '__main__':
     def _parse_dims(s: str):

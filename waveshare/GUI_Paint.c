@@ -91,6 +91,7 @@ void Paint_NewImage(UBYTE *image, UWORD Width, UWORD Height, UWORD Rotate, UWORD
     Paint.GrayScale = pow(2, Paint.BitsPerPixel);
     Paint.WidthByte = Width;
     Paint.HeightByte = Height;
+    Paint.Histogram = calloc(Paint.GrayScale, sizeof(UDOUBLE));
    
     Paint.Rotate = Rotate;
     Paint.Mirror = MIRROR_NONE;
@@ -180,6 +181,9 @@ void Paint_SetPixel(UWORD Xpoint, UWORD Ypoint, UWORD Color)
         return;
     }      
     UWORD X, Y;
+
+    // TODO `&0xF0` is only correct for 4 and 8 bpp images.
+    Paint.Histogram[(Color&0xF0)>>4]++;
 
     switch(Paint.Rotate) {
     case 0:
@@ -773,4 +777,13 @@ void Paint_DrawTime(UWORD Xstart, UWORD Ystart, PAINT_TIME *pTime, sFONT* Font,
     Paint_DrawChar(Xstart + Dx * 4 + Dx / 2 - Dx / 4, Ystart, ':'                    , Font, Color_Foreground, Color_Background);
     Paint_DrawChar(Xstart + Dx * 5                  , Ystart, value[pTime->Sec / 10] , Font, Color_Foreground, Color_Background);
     Paint_DrawChar(Xstart + Dx * 6                  , Ystart, value[pTime->Sec % 10] , Font, Color_Foreground, Color_Background);
+}
+
+void Paint_PrintHistogram() {
+    int t = 0;
+    for (int i = 0; i < Paint.GrayScale; i++) {
+        printf("Color %d: %d\n", i, Paint.Histogram[i]);
+        t += Paint.Histogram[i];
+    }
+    printf("Total: %d\n", t);
 }

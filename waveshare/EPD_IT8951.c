@@ -493,10 +493,13 @@ static void EPD_IT8951_HostAreaPackedPixelWrite_4bp(IT8951_Load_Img_Info*Load_Im
 
     if(Packed_Write == true)
     {
+        Debug("write packed\n");
         EPD_IT8951_WriteMuitiData(Source_Buffer, Source_Buffer_Length);
+        Debug("write done\n");
     }
     else
     {
+        Debug("write\n");
         for(UDOUBLE i=0; i<Source_Buffer_Height; i++)
         {
             for(UDOUBLE j=0; j<Source_Buffer_Width; j++)
@@ -505,6 +508,7 @@ static void EPD_IT8951_HostAreaPackedPixelWrite_4bp(IT8951_Load_Img_Info*Load_Im
                 Source_Buffer++;
             }
         }
+        Debug("write done\n");
     }
 
     EPD_IT8951_LoadImgEnd();
@@ -716,7 +720,7 @@ void EPD_IT8951_Clear_Refresh(IT8951_Dev_Info Dev_Info,UDOUBLE Target_Memory_Add
     Area_Img_Info.Area_W = Dev_Info.Panel_W;
     Area_Img_Info.Area_H = Dev_Info.Panel_H;
 
-    EPD_IT8951_HostAreaPackedPixelWrite_4bp(&Load_Img_Info, &Area_Img_Info, false);
+    EPD_IT8951_HostAreaPackedPixelWrite_4bp(&Load_Img_Info, &Area_Img_Info, true);
 
     EPD_IT8951_Display_Area(0, 0, Dev_Info.Panel_W, Dev_Info.Panel_H, Mode);
 

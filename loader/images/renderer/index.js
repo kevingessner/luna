@@ -13,7 +13,7 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(size, size);
 renderer.setPixelRatio(1);
-renderer.toneMapping = THREE.LinearToneMapping;
+renderer.toneMapping = THREE.AgXToneMapping;
 renderer.toneMappingExposure = 4;
 renderer.setClearColor(0x111111, 0);
 renderer.localClippingEnabled = true;
@@ -42,8 +42,10 @@ function render() {
 // scene elements
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 3);
+sunLight.name = 'sunLight';
 scene.add(sunLight);
 const earthLight = new THREE.DirectionalLight(0xffffff, 0.1);
+earthLight.name = 'earthLight';
 scene.add(earthLight);
 
 const loader = new THREE.TextureLoader();
@@ -73,26 +75,29 @@ loader.load('../webgl/textures/ldem_displacement.png', (t) => {
 // improve the appearance of the terminator.  The back gets a lower-height texture,
 // implemented as a normal rather than bump map, to avoid unrealistic sharp lights
 // on peaks in the dark area.  A bump map for the front side gives good craters.
-// The dividing line is slightly to the dark side so the line between the textures
-// is in the dark zone.
-const clippingPlane = () => new THREE.Plane(sunLight.position.clone(), -0.001);
+// The dividing line is slightly to the light side so the line between the textures
+// is exaggerated but not too abrupt.
+const clippingPlane = () => new THREE.Plane(sunLight.position.clone(), -.002);
 const moonMaterialFront = new THREE.MeshPhysicalMaterial({
     color: '#999999',
     bumpScale: 30,
     roughness: 1,
     metalness: 0,
-    reflectivity: 0,
+    reflectivity: 0.5,
     clippingPlanes: [clippingPlane()],
     side: THREE.DoubleSide
 });
 const moonMaterialBack = moonMaterialFront.clone();
 moonMaterialBack.setValues({
     normalScale: new THREE.Vector2(-.3,.3),
+    reflectivity: 0,
     clippingPlanes: [clippingPlane().negate()]
 });
-const globeFront = new THREE.Mesh( geometry, moonMaterialFront );
-const globeBack = new THREE.Mesh( geometry, moonMaterialBack );
+const globeFront = new THREE.Mesh(geometry, moonMaterialFront);
+globeFront.name = 'globeFront';
 scene.add(globeFront);
+const globeBack = new THREE.Mesh(geometry, moonMaterialBack);
+globeBack.name = 'globeBack';
 scene.add(globeBack);
 
 

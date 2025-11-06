@@ -10,7 +10,15 @@ Powered by a Raspberry Pi with a Waveshare e-paper display.
 
 ## Build and install
 
-Depends on a few packages: `sudo apt-get install autoconf imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod`
+The Raspberry Pi is flashed with Raspberry Pi OS,
+and configured with SSH access and Wifi at imaging time.
+
+You can copy the entire `luna` repository to your raspi.
+
+First install a few packages:
+```
+sudo apt-get install autoconf libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb
+```
 
 To compile luna: `make`
 
@@ -36,6 +44,10 @@ This can be safely cleared at any time the process is not actively running.
 
 
 ## Development
+
+I designed and tested Luna with Raspberry Pi 5, Debian Trixie, & [Waveshare 10.3", 16-grays, 1872x1404px display](https://www.waveshare.com/10.3inch-e-paper.htm).
+The Raspberry Pi 4 may also work but older models likely won't -- the rendering code requires a GPU and at least 1GB of RAM.
+Other display models should work, with slight modifications (see below), but are not tested -- YMMV.
 
 The various components can be developed independently:
 
@@ -66,12 +78,6 @@ The image produced by `main.py` includes some debugging info that is covered by 
 ![Luna example image](luna-display-example.png)
 
 ## Frame and mount
-
-I designed and tested Luna with Raspberry Pi Zero WH & [Waveshare 10.3", 16-grays, 1872x1404px display](https://www.waveshare.com/10.3inch-e-paper.htm).
-Other Raspberry Pi and display models should work, with slight modifications (see below), but are not tested -- YMMV.
-
-The Raspberry Pi is flashed with Raspberry Pi OS,
-and configured with SSH access and Wifi at imaging time.
 
 I mounted Luna for display in a 10"x10" frame ([Blick 18862-2010](https://www.dickblick.com/items/blick-wood-gallery-frame-black-10-x-10-/)),
 matted with black museum board ([Blick 13447-2051](https://www.dickblick.com/items/super-black-presentation-and-mounting-board-15-x-20-14-ply-black/)).

@@ -7,8 +7,7 @@ Requires=network.target
 Type=idle
 User=luna
 ExecStart=$DIR/loader/venv/bin/python $DIR/loader/main.py "sudo $DIR/waveshare/bin/epd $VCOM 1"
-Restart=always
-RestartSec=300
+Restart=never
 
 [Install]
 WantedBy=multi-user.target

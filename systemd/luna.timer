@@ -1,0 +1,6 @@
+[Install]
+WantedBy=timers.target
+
+[Timer]
+OnCalendar=*:0,10,20,30,40,50:00
+OnTimezoneChange=True

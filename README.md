@@ -17,7 +17,7 @@ You can copy the entire `luna` repository to your raspi.
 
 First install a few packages:
 ```
-sudo apt-get install autoconf libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb
+sudo apt-get install autoconf autoconf-archive libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb iptables
 ```
 
 To compile luna: `make`

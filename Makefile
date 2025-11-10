@@ -14,7 +14,7 @@ waveshare:
 
 .PHONY: libgpiod
 libgpiod:
-	cd $(LIBGPIOD) && ./autogen.sh --enable-tools=yes --prefix=$(LIBGPIOD_BIN)
+	cd $(LIBGPIOD) && ./autogen.sh --enable-tools=no --prefix=$(LIBGPIOD_BIN)
 	$(MAKE) -C $(LIBGPIOD)
 	$(MAKE) -C $(LIBGPIOD) install
 

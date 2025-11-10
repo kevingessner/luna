@@ -23,7 +23,7 @@ def debug_text(dt: datetime, msg):
 '''
 
 def produce_debug_image(dimensions, output_img_path: str, dt: datetime, msg):
-    text = debug_text(dt, msg).replace('%', '\%').replace('\n', '\\n').strip()
+    text = debug_text(dt, msg).replace('%', '\\%').replace('\n', '\\n').strip()
     args = ('convert',
         '-background', 'white',
         '-fill', 'black',

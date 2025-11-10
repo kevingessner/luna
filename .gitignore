@@ -2,6 +2,7 @@ waveshare/bin/*
 systemd/luna.service
 systemd/luna-config.service
 # built outputs from ./configure and make
+bin/
 
 loader/venv/
 __pycache__/

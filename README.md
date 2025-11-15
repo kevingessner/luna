@@ -17,8 +17,13 @@ You can copy the entire `luna` repository to your raspi.
 
 First install a few packages:
 ```
-sudo apt-get install autoconf autoconf-archive libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb iptables
+sudo apt-get install autoconf autoconf-archive libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb iptables qrencode
 ```
+
+Then enable `SPI` with no chip select.
+Edit `/boot/firmware/config.txt`.
+Ensure the line `dtparam=spi=on` is not commented, and add the line `dtoverlay=spi0-0cs` immediately after it.
+Reboot.
 
 To compile luna: `make`
 

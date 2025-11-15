@@ -51,6 +51,7 @@ $(CONFIG_SYSTEMD): systemd/luna-config.service.tmpl FORCE
 install: $(SYSTEMD) $(CONFIG_SYSTEMD) systemd/luna.timer
 	for f in $^; do sudo systemctl enable $(PWD)/$$f; done
 	sudo systemctl start luna.timer
+	sudo systemctl start luna
 	sudo systemctl start luna-config
 
 .PHONY: uninstall

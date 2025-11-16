@@ -15,11 +15,19 @@ from . import CONFIG_DIR
 log = logging.getLogger()
 HTML_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', '..', 'setup', 'index.html') # even sorrier
 
+def _subprocess(args):
+    try:
+        subprocess.check_output(args, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        raise Exception(f'failed: {e.cmd}: {e.output} {e.stderr}')
+
 def set_time(dt: datetime):
+    # Make sure NTP is disabled to allow the time to be set.
+    _subprocess(['sudo', 'timedatectl', 'set-ntp', 'false'])
     # Set the timezone first.
-    subprocess.check_call(['sudo', 'timedatectl', 'set-timezone', dt.tzinfo.key])
+    _subprocess(['sudo', 'timedatectl', 'set-timezone', dt.tzinfo.key])
     # Set the system and hardware clocks.  `set-time` must be set with a local timestamp, but will store the time in UTC.
-    subprocess.check_call(['sudo', 'timedatectl', 'set-time', dt.astimezone().strftime('%Y-%m-%d %H:%M:%S')])
+    _subprocess(['sudo', 'timedatectl', 'set-time', dt.astimezone().strftime('%Y-%m-%d %H:%M:%S')])
 
 def save_config(config):
     for name in ['latitude', 'longitude']:

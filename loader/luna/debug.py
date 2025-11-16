@@ -1,14 +1,10 @@
 import logging
-import os
 import re
 import shlex
 import subprocess
 from datetime import datetime
 
 log = logging.getLogger(__name__)
-
-
-hotspot_png = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', 'config', 'hotspot.png')
 
 
 def _check_output_safe(*args, **kwargs) -> str:
@@ -44,17 +40,15 @@ def produce_debug_image(dimensions, output_img_path: str, dt: datetime, msg):
     log.info(f'producing debug image complete {output_img_path}')
 
 def produce_needs_config_image(dimensions, output_img_path: str):
-    size = min(*dimensions) - 400
+    text = 'Luna needs to be set up\n\nConnect to this Wifi network to continue:\n' + _check_output_safe(['sudo', 'nmcli', 'dev', 'wifi', 'show-password']) + '\n\nIf needed, point your browser to http://luna.setup\n\n' + datetime.now().strftime('%c')
     args = ('convert',
+        'canvas:white',
         '-background', 'white',
-        hotspot_png,
-        '-sample', f'{size}x{size}',
-        '-gravity', 'center',
         '-extent', '{}x{}'.format(*dimensions),
+        '-gravity', 'center',
         '-fill', 'black',
         '-pointsize', '36',
-        '-annotate', f'+0-{size/2+10}', 'Luna needs to be set up',
-        '-annotate', f'+0+{size/2+10}', _check_output_safe(['nmcli', 'dev', 'wifi', 'show']) + '\nhttp://luna.local\n' + datetime.now().strftime('%c'),
+        '-annotate', f'+0-0', text,
         output_img_path,
     )
     log.info(f'producing debug image to {output_img_path}:\n{shlex.join(args)}')

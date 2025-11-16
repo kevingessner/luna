@@ -1,7 +1,9 @@
 #!/bin/bash
+set -ex
+
 CON=rpi_ap
 SSID="$HOSTNAME"
-PASSWORD="1234"
+PASSWORD="lunaluna"
 IP=192.168.2.1
 
 echo "HEADS UP! This script will replace any current wifi connection with a local hotspot."
@@ -20,9 +22,6 @@ nmcli connection add type wifi ifname wlan0 con-name "$CON" autoconnect yes \
 	wifi-sec.psk "$PASSWORD"
 
 nmcli connection up "$CON"
-
-
-qrencode -o $(dirname "$(realpath "$0")")/../config/hotspot.png "WIFI:T:WPA;S:$SSID;P:$PASSWORD;;"
 
 
 # Resolve all DNS lookups to this host, without forwarding them upstream.  This ensures

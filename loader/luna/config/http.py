@@ -10,7 +10,7 @@ try:
     import zoneinfo
 except ImportError:
     from backports import zoneinfo
-from . import CONFIG_DIR
+from . import CONFIG_DIR, get_location
 
 log = logging.getLogger()
 HTML_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', '..', 'setup', 'index.html') # even sorrier
@@ -42,6 +42,16 @@ def save_config(config):
     # Trigger the image to refresh immediately
     subprocess.check_call(['sudo', 'systemctl', 'start', 'luna'])
 
+def current_values_js():
+    try:
+        (lat, lon) = get_location()
+    except:
+        return ''
+    return f'''
+    <script type="text/plain" id="currentLatitude">{lat}</script>
+    <script type="text/plain" id="currentLongitude">{lon}</script>
+    '''
+
 class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
@@ -51,7 +61,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 html = f.read()
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(html.encode('utf-8'))
+            self.wfile.write(html.encode('utf-8') + current_values_js().encode('utf-8'))
         except Exception as e:
             log.warning('GET failed', exc_info=e)
             self.send_response(500)

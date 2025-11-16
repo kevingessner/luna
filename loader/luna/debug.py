@@ -40,7 +40,18 @@ def produce_debug_image(dimensions, output_img_path: str, dt: datetime, msg):
     log.info(f'producing debug image complete {output_img_path}')
 
 def produce_needs_config_image(dimensions, output_img_path: str):
-    text = 'Luna needs to be set up\n\nConnect to this Wifi network to continue:\n' + _check_output_safe(['sudo', 'nmcli', 'dev', 'wifi', 'show-password']) + '\n\nIf needed, point your browser to http://luna.setup\n\n' + datetime.now().strftime('%c')
+    # Prints the hotspot WiFi network name and password (sudo required for the password)
+    wifi_info = _check_output_safe(['sudo', 'nmcli', 'dev', 'wifi', 'show-password'])
+    text = f'''Luna needs to be set up
+
+You'll need your GPS coordinates (try https://gps-coordinates.org/)
+
+Then connect to this Wifi network to continue:
+{wifi_info}
+
+If needed, point your browser to http://luna.setup/
+
+{datetime.now().strftime('%c')}'''
     args = ('convert',
         'canvas:white',
         '-background', 'white',
@@ -48,7 +59,7 @@ def produce_needs_config_image(dimensions, output_img_path: str):
         '-gravity', 'center',
         '-fill', 'black',
         '-pointsize', '36',
-        '-annotate', f'+0-0', text,
+        '-annotate', '+0-0', text,
         output_img_path,
     )
     log.info(f'producing debug image to {output_img_path}:\n{shlex.join(args)}')

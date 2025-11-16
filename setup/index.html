@@ -13,7 +13,7 @@
                 font-size: 120%;
                 margin-bottom: 0.5em;
             }
-            input {
+            input, select {
                 font-size: 120%;
                 min-width: 10em;
                 margin: 0.2em 0;
@@ -26,13 +26,13 @@
         <div id="form">
             <p>
                 <label for="datetime">Current time</label>
-                <input type="datetime-local" name="datetime" />
-                <span id="timezone"></span>
-                <input name="tzcode" type="hidden" />
+                <input type="datetime-local" name="datetime" id="datetime" />
+                <select name="tzcode">
+                </select>
             </p>
             <p>
                 <label for="latitude">Location</label>
-                <input type="number" min="-90" max="90" step="0.01" name="latitude" placeholder="Latitude (+E,-W)" />
+                <input type="number" min="-90" max="90" step="0.01" name="latitude" id="latitude" placeholder="Latitude (+E,-W)" />
                 <input type="number" min="-180" max="180" step="0.01" name="longitude" placeholder="Longitude (+N,-S)" />
                 <button id="locate">Locate me</button>
             </p>
@@ -61,15 +61,43 @@
                 var formatted = Object.fromEntries(formatter.formatToParts(now).map(o => [o['type'], o['value']]));
                 var now_str = `${formatted['year']}-${formatted['month']}-${formatted['day']}T${formatted['hour']}:${formatted['minute']}`;
                 datetime_field.value = now_str;
-                // Set both the internal TZ code (like "America/New_York") to submit, and the short code to show the user.
-                var timezone_field = document.querySelector('[name=tzcode]');
-                timezone_field.value = formatter.resolvedOptions().timeZone;
-                document.querySelector('#timezone').innerText = `(${formatted['timeZoneName']})`;
+
+                var field = document.querySelector('[name=tzcode]');
+                var now_tz = formatter.resolvedOptions().timeZone;
+                var all_tzs = Intl.supportedValuesOf('timeZone');
+                // Shouldn't be possible for the returned TZ to not be in the list, but just to be safe.
+                if (!all_tzs.includes(now_tz)) {
+                    all_tzs.unshift(now_tz);
+                }
+                for (var tz of all_tzs) {
+                    var option = document.createElement('option');
+                    option.value = tz;
+                    option.innerText = tz;
+                    if (now_tz === tz) {
+                        option.selected = true;
+                    }
+                    field.append(option);
+                }
+            })();
+
+            (function() {
+                function setCurrentValue(valueId, fieldName) {
+                    var d = document.querySelector('#' + valueId);
+                    if (d && d.innerText) {
+                        document.querySelector('[name=' + fieldName + ']').value = d.innerText;
+                    }
+                }
+                // Nab values that are appended to the HTML by the config server.
+                // Run with requestAnimationFrame so it runs after the full file is parsed to the end.
+                requestAnimationFrame(function() {
+                    setCurrentValue('currentLatitude', 'latitude');
+                    setCurrentValue('currentLongitude', 'longitude');
+                });
             })();
 
             (function() {
                 const btn = document.querySelector('#locate');
-                if (!isSecureContext || !navigator.geolocation) {
+                if (!navigator.geolocation) {
                     // Geolocation won't work in an insecure context (e.g. localhost, private network).
                     btn.remove();
                     return;
@@ -154,4 +182,3 @@
     </body>
 
 </html>
-

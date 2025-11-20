@@ -48,7 +48,7 @@ def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: st
         '-extent', '%dx%d' % (max_size, max_size),
         # 'Gray' makes for a nice contrasty conversion to grayscale
         '-colorspace', 'Gray',
-        '-normalize',
+        '-contrast-stretch', '0.15x0.05%',
         # Center the (now-square) moon image on a canvas the size of the display,
         # rotated by the "position angle" (from the ephemeris; CW) and
         # "parallactic angle" (calculated; CCW) that account for the tilt of the illuminated limb.

@@ -17,7 +17,7 @@ You can copy the entire `luna` repository to your raspi.
 
 First install a few packages:
 ```
-sudo apt-get install autoconf autoconf-archive libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb iptables qrencode
+sudo apt-get install autoconf autoconf-archive libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb iptables
 ```
 
 Then enable `SPI` with no chip select.
@@ -36,12 +36,12 @@ echo XX.XX > config/latitude
 echo YY.YY > config/longitude
 ```
 
-To install the luna systemd service and start the process every five minutes: `VCOM=YOUR_VCOM make install`
+To install the luna systemd services and timer: `VCOM=YOUR_VCOM make install`
 
 `YOUR_VCOM` is the vcom value from your screen's cable, a small negative number like `-1.37`.
 See [the waveshare docs](https://www.waveshare.com/wiki/10.3inch_e-Paper_HAT#Use_the_correct_VCOM_value)
 
-> Systemd creates a symlink to `systemd/luna.service` in the current directory,
+> Systemd creates symlinks to files in `systemd/` in the current directory,
 > so relocate this code to its permanent home before `make install`.
 
 Luna uses `/var/tmp/luna` as scratch space.
@@ -62,16 +62,15 @@ The various components can be developed independently:
     - build with `make libgpiod`
 - `waveshare/`: C code based on Waveshare's RPi library at https://github.com/waveshare/IT8951-ePaper/tree/master/Raspberry
     - builds `bin/epd`, which displays a bitmap on the e-paper display
-    - build with `make waveshare` after building `bcm2835` at least once
+    - build with `make waveshare` after building `libgpiod` at least once
 - `loader/`: Python code that prepares the moon image for display and optionally displays it
     - produces `/var/tmp/luna/tmp-display.bmp` for display
     - hard-coded display size and location are here
     - requires a virtualenv that is built by `make loader`
-    - `images/`: library of images and ephemeris data from NASA
 - `systemd/`: systemd unit for running the loader
-    - installs a service named `luna`
+    - installs a service named `luna`, a timer `luna.timer` that triggers it, and `luna-config` service that allows setting up Luna over HTTP
     - see its logs with `sudo journalctl -eu luna`
-    - `make uninstall` to stop and remove the service
+    - `make uninstall` to stop and remove the services
 
 To produce the image `/var/tmp/luna/tmp-display.bmp` that will be displayed,
 run `./loader/main.py` (after running `make` at least once).

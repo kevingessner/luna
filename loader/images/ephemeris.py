@@ -7,14 +7,31 @@ from datetime import datetime, timedelta, timezone
 
 import astral.moon
 
-from . import libraries
-
 
 __all__ = ('moon_eph_for_datetime')
 
 log = logging.getLogger(__name__)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ephemeris')
+
+
+@dataclass
+class MoonImageInfo:
+    time: str
+    phase: float # percentage from 0-100
+    age: float # from 0-28
+    subearth: typing.Tuple[float, float] # lat, lon
+    subsolar: typing.Tuple[float, float] # lat, lon
+    posangle: float
+    index: typing.Optional[str] = None
+
+    @classmethod
+    def from_json(cls, d):
+        if 'time' in d:
+            return MoonImageInfo(**{k: d[k] for k in ('time', 'phase', 'age', 'subearth', 'subsolar', 'posangle')})
+        if 'lon' in d:
+            return (d['lat'], d['lon'])
+        return d
 
 
 def _moon_age(dt: datetime):
@@ -34,7 +51,7 @@ def _find_field(fields: typing.List[str], field_name: str) -> int:
     return field
 
 
-def seek(eph_lines: typing.Iterable[str], dt: datetime) -> libraries.MoonImageInfo:
+def iterate(eph_lines: typing.Iterable[str]) -> typing.Generator[MoonImageInfo, None, None]:
     eph = enumerate(eph_lines)
     for i, l in eph:
         if l.startswith('Table format'):
@@ -45,31 +62,43 @@ def seek(eph_lines: typing.Iterable[str], dt: datetime) -> libraries.MoonImageIn
     fields = [f.strip() for f in fields_header.split(',')]
     subearth_lat_field = _find_field(fields, 'ObsSub-LAT')
     subearth_lon_field = _find_field(fields, 'ObsSub-LON')
+    subsun_lat_field = _find_field(fields, 'SunSub-LAT')
+    subsun_lon_field = _find_field(fields, 'SunSub-LON')
     posangle_field = _find_field(fields, 'NP.ang')
     illu_pct_field = _find_field(fields, 'Illu%')
 
     _consume(eph, '***')
     _consume(eph, '$$SOE')
+    for i, l in eph:
+        if l.startswith('$$EOE'):
+            break
+        values = [s.strip() for s in l.split(',')]
+        dt = datetime.strptime(values[0].strip(), '%Y-%b-%d %H:%M')
+        raw_earth_lon = float(values[subearth_lon_field])
+        earth_lon = raw_earth_lon if raw_earth_lon < 180 else raw_earth_lon - 360
+        raw_sun_lon = float(values[subsun_lon_field])
+        sun_lon = raw_sun_lon if raw_sun_lon < 180 else raw_sun_lon - 360
+        yield MoonImageInfo(
+            time=values[0],
+            phase=float(values[illu_pct_field]),
+            age=_moon_age(dt),
+            subearth=(float(values[subearth_lat_field]), earth_lon),
+            subsolar=(float(values[subsun_lat_field]), sun_lon),
+            posangle=float(values[posangle_field]),
+        )
+
+def seek(eph_lines: typing.Iterable[str], dt: datetime) -> MoonImageInfo:
     seek_dt = dt.replace(minute=0, second=0)
     if dt.minute >= 30:
         seek_dt += timedelta(hours=1)
-    dt_str = seek_dt.strftime(' %Y-%b-%d %H:%M')
-    for i, l in eph:
-        if l.startswith(dt_str):
-            values = [s.strip() for s in l.split(',')]
-            raw_lon = float(values[subearth_lon_field])
-            lon = raw_lon if raw_lon < 180 else raw_lon - 360
-            return libraries.MoonImageInfo(
-                time=str(seek_dt),
-                phase=float(values[illu_pct_field]),
-                age=_moon_age(seek_dt),
-                subearth=(float(values[subearth_lat_field]), lon),
-                posangle=float(values[posangle_field]),
-            )
+    dt_str = seek_dt.strftime('%Y-%b-%d %H:%M')
+    for info in iterate(eph_lines):
+        if info.time.startswith(dt_str):
+            return info
     raise ValueError(f'did not find date in ephemeris: {dt}')
 
 
-def moon_eph_for_datetime(dt: datetime) -> libraries.MoonImageInfo:
+def moon_eph_for_datetime(dt: datetime) -> MoonImageInfo:
     path = os.path.join(DATA_DIR, f'{dt:%Y}.txt')
     try:
         with open(path, 'r') as f:

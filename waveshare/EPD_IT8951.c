@@ -292,6 +292,24 @@ static void EPD_IT8951_SetVCOM(UWORD VCOM)
 }
 
 
+
+/******************************************************************************
+function :	Cmd10 LD_IMG
+parameter:  
+******************************************************************************/
+static void EPD_IT8951_LoadImgStart( IT8951_Load_Img_Info* Load_Img_Info )
+{
+    UWORD Args;
+    Args = (\
+        Load_Img_Info->Endian_Type<<8 | \
+        Load_Img_Info->Pixel_Format<<4 | \
+        Load_Img_Info->Rotate\
+    );
+    EPD_IT8951_WriteCommand(IT8951_TCON_LD_IMG);
+    EPD_IT8951_WriteData(Args);
+}
+
+
 /******************************************************************************
 function :	Cmd11 LD_IMG_Area
 parameter:  
@@ -475,10 +493,13 @@ static void EPD_IT8951_HostAreaPackedPixelWrite_4bp(IT8951_Load_Img_Info*Load_Im
 
     if(Packed_Write == true)
     {
+        Debug("write packed\n");
         EPD_IT8951_WriteMuitiData(Source_Buffer, Source_Buffer_Length);
+        Debug("write done\n");
     }
     else
     {
+        Debug("write\n");
         for(UDOUBLE i=0; i<Source_Buffer_Height; i++)
         {
             for(UDOUBLE j=0; j<Source_Buffer_Width; j++)
@@ -487,6 +508,7 @@ static void EPD_IT8951_HostAreaPackedPixelWrite_4bp(IT8951_Load_Img_Info*Load_Im
                 Source_Buffer++;
             }
         }
+        Debug("write done\n");
     }
 
     EPD_IT8951_LoadImgEnd();
@@ -698,7 +720,7 @@ void EPD_IT8951_Clear_Refresh(IT8951_Dev_Info Dev_Info,UDOUBLE Target_Memory_Add
     Area_Img_Info.Area_W = Dev_Info.Panel_W;
     Area_Img_Info.Area_H = Dev_Info.Panel_H;
 
-    EPD_IT8951_HostAreaPackedPixelWrite_4bp(&Load_Img_Info, &Area_Img_Info, false);
+    EPD_IT8951_HostAreaPackedPixelWrite_4bp(&Load_Img_Info, &Area_Img_Info, true);
 
     EPD_IT8951_Display_Area(0, 0, Dev_Info.Panel_W, Dev_Info.Panel_H, Mode);
 

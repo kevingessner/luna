@@ -11,6 +11,7 @@ log = logging.getLogger(__name__)
 class Annotate:
     azimuth_r1: int
     azimuth_r2: int # inner and outer radius of the azimuth line and text
+    max_moon_size: int
     indicator_r = 10 # radius of the altitude indicator dot
     color = '#eee' # color of text, indicator, etc
     dimensions: typing.Tuple[int, int]
@@ -23,6 +24,8 @@ class Annotate:
         annotate_ring_width = 70
         self.azimuth_r2 = min(display_w, display_h) // 2 - 0
         self.azimuth_r1 = self.azimuth_r2 - annotate_ring_width
+        # Fit the image not just in the screen but inside the inner ring of annotations.
+        self.max_moon_size = self.azimuth_r1 * 2
         self.dimensions = (display_w, display_h)
         self.half_dimensions = (display_w//2, display_h//2)
         self.mg = mg

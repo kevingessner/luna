@@ -10,12 +10,20 @@ Powered by a Raspberry Pi with a Waveshare e-paper display.
 
 ## Build and install
 
-Depends on a few packages: `sudo apt-get install autoconf imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35`
+The Raspberry Pi is flashed with Raspberry Pi OS,
+and configured with SSH access and Wifi at imaging time.
 
-Clone the source respository and run `git submodule update --init` to fetch the image library
+You can copy the entire `luna` repository to your raspi.
 
-> The images are about 18GB.  Fetching the submodule also requires about 18GB of git repository overhead.
-> To just get the images, without a repository, run `./loader/images/fetch-images.sh` instead of `git submodule`.
+First install a few packages:
+```
+sudo apt-get install autoconf autoconf-archive libtool imagemagick python3-venv fontconfig fonts-liberation fonts-urw-base35 gpiod chromium xvfb iptables
+```
+
+Then enable `SPI` with no chip select.
+Edit `/boot/firmware/config.txt`.
+Ensure the line `dtparam=spi=on` is not commented, and add the line `dtoverlay=spi0-0cs` immediately after it.
+Reboot.
 
 To compile luna: `make`
 
@@ -28,12 +36,12 @@ echo XX.XX > config/latitude
 echo YY.YY > config/longitude
 ```
 
-To install the luna systemd service and start the process every five minutes: `VCOM=YOUR_VCOM make install`
+To install the luna systemd services and timer: `VCOM=YOUR_VCOM make install`
 
 `YOUR_VCOM` is the vcom value from your screen's cable, a small negative number like `-1.37`.
 See [the waveshare docs](https://www.waveshare.com/wiki/10.3inch_e-Paper_HAT#Use_the_correct_VCOM_value)
 
-> Systemd creates a symlink to `systemd/luna.service` in the current directory,
+> Systemd creates symlinks to files in `systemd/` in the current directory,
 > so relocate this code to its permanent home before `make install`.
 
 Luna uses `/var/tmp/luna` as scratch space.
@@ -42,23 +50,27 @@ This can be safely cleared at any time the process is not actively running.
 
 ## Development
 
+I designed and tested Luna with Raspberry Pi 5, Debian Trixie, & [Waveshare 10.3", 16-grays, 1872x1404px display](https://www.waveshare.com/10.3inch-e-paper.htm).
+The Raspberry Pi 4 may also work but older models likely won't -- the rendering code requires a GPU and at least 1GB of RAM.
+Other display models should work, with slight modifications (see below), but are not tested -- YMMV.
+
 The various components can be developed independently:
 
-- `bcm2835-1.71/`: Broadcom BCM 2835 library from http://www.airspayce.com/mikem/bcm2835/
-    - required by the waveshare code
-    - build with `make bcm2835`
+- `libgpiod-1.6.x/`: libgpiod from https://github.com/brgl/libgpiod/tree/v1.6.x
+    - required by the waveshare code -- v2.x from `apt` is too new and incompatible
+    - ran `autoupdate` before checking in
+    - build with `make libgpiod`
 - `waveshare/`: C code based on Waveshare's RPi library at https://github.com/waveshare/IT8951-ePaper/tree/master/Raspberry
     - builds `bin/epd`, which displays a bitmap on the e-paper display
-    - build with `make waveshare` after building `bcm2835` at least once
+    - build with `make waveshare` after building `libgpiod` at least once
 - `loader/`: Python code that prepares the moon image for display and optionally displays it
     - produces `/var/tmp/luna/tmp-display.bmp` for display
     - hard-coded display size and location are here
     - requires a virtualenv that is built by `make loader`
-    - `images/`: library of images and ephemeris data from NASA
 - `systemd/`: systemd unit for running the loader
-    - installs a service named `luna`
+    - installs a service named `luna`, a timer `luna.timer` that triggers it, and `luna-config` service that allows setting up Luna over HTTP
     - see its logs with `sudo journalctl -eu luna`
-    - `make uninstall` to stop and remove the service
+    - `make uninstall` to stop and remove the services
 
 To produce the image `/var/tmp/luna/tmp-display.bmp` that will be displayed,
 run `./loader/main.py` (after running `make` at least once).
@@ -70,12 +82,6 @@ The image produced by `main.py` includes some debugging info that is covered by 
 ![Luna example image](luna-display-example.png)
 
 ## Frame and mount
-
-I designed and tested Luna with Raspberry Pi Zero WH & [Waveshare 10.3", 16-grays, 1872x1404px display](https://www.waveshare.com/10.3inch-e-paper.htm).
-Other Raspberry Pi and display models should work, with slight modifications (see below), but are not tested -- YMMV.
-
-The Raspberry Pi is flashed with Raspberry Pi OS,
-and configured with SSH access and Wifi at imaging time.
 
 I mounted Luna for display in a 10"x10" frame ([Blick 18862-2010](https://www.dickblick.com/items/blick-wood-gallery-frame-black-10-x-10-/)),
 matted with black museum board ([Blick 13447-2051](https://www.dickblick.com/items/super-black-presentation-and-mounting-board-15-x-20-14-ply-black/)).

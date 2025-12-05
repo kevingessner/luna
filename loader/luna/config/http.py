@@ -10,18 +10,24 @@ try:
     import zoneinfo
 except ImportError:
     from backports import zoneinfo
-from . import CONFIG_DIR
+from . import CONFIG_DIR, get_location
 
 log = logging.getLogger()
 HTML_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', '..', '..', 'setup', 'index.html') # even sorrier
 
+def _subprocess(args):
+    try:
+        subprocess.check_output(args, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        raise Exception(f'failed: {e.cmd}: {e.output} {e.stderr}')
+
 def set_time(dt: datetime):
-    # Set the hardware clock.  It must be set with a local timestamp, but we want it to internally store UTC.
-    subprocess.check_call(['sudo', 'hwclock', '--set', '--utc', '--date', dt.astimezone().strftime('%Y-%m-%d %H:%M:%S')])
-    # Jump the system time to match
-    subprocess.check_call(['sudo', 'hwclock', '--hctosys'])
-    # Set the timezone
-    subprocess.check_call(['sudo', 'timedatectl', 'set-timezone', dt.tzinfo.key])
+    # Make sure NTP is disabled to allow the time to be set.
+    _subprocess(['sudo', 'timedatectl', 'set-ntp', 'false'])
+    # Set the timezone first.
+    _subprocess(['sudo', 'timedatectl', 'set-timezone', dt.tzinfo.key])
+    # Set the system and hardware clocks.  `set-time` must be set with a local timestamp, but will store the time in UTC.
+    _subprocess(['sudo', 'timedatectl', 'set-time', dt.strftime('%Y-%m-%d %H:%M:%S')])
 
 def save_config(config):
     for name in ['latitude', 'longitude']:
@@ -34,34 +40,28 @@ def save_config(config):
     dt = datetime.strptime(config['datetime'], '%Y-%m-%dT%H:%M').replace(tzinfo=zoneinfo.ZoneInfo(tz_code))
     set_time(dt)
     # Trigger the image to refresh immediately
-    subprocess.check_call(['sudo', 'systemctl', 'restart', 'luna'])
+    subprocess.check_call(['sudo', 'systemctl', 'start', 'luna'])
+
+def current_values_js():
+    try:
+        (lat, lon) = get_location()
+    except:
+        return ''
+    return f'''
+    <script type="text/plain" id="currentLatitude">{lat}</script>
+    <script type="text/plain" id="currentLongitude">{lon}</script>
+    '''
 
 class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
-        '''Serve the form, or save GET-provided data.'''
-        try:
-            query = urllib.parse.urlparse(self.path).query
-            parsed = urllib.parse.parse_qs(query)
-            if parsed and 'config' in parsed:
-                config = json.loads(base64.b64decode(parsed['config'][0]))
-                log.info(f'saving {config}')
-                save_config(config)
-                self.send_response(303)
-                self.send_header('Location', '/#success')
-                self.end_headers()
-                return
-        except Exception as e:
-            # Nothing we can do, so just re-present the form.
-            log.warning('save failed', exc_info=e)
-
+        '''Serve the form.'''
         try:
             with open(HTML_FILE, 'r') as f:
                 html = f.read()
-            html = html.replace('isLunaLocal = false', 'isLunaLocal = true')
             self.send_response(200)
             self.end_headers()
-            self.wfile.write(html.encode('utf-8'))
+            self.wfile.write(html.encode('utf-8') + current_values_js().encode('utf-8'))
         except Exception as e:
             log.warning('GET failed', exc_info=e)
             self.send_response(500)

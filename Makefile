@@ -1,22 +1,22 @@
 WAVESHARE=waveshare
-BCM2835=bcm2835-1.71
-BCM2835_BIN=$(PWD)/$(BCM2835)/bin
+LIBGPIOD=$(PWD)/libgpiod-1.6.x
+LIBGPIOD_BIN=$(LIBGPIOD)/bin
 SYSTEMD=systemd/luna.service
 CONFIG_SYSTEMD=systemd/luna-config.service
 PYTHON_VENV=$(PWD)/loader/venv
 
 .PHONY: all
-all: bcm2835 waveshare loader
+all: libgpiod waveshare loader
 
 .PHONY: waveshare
 waveshare:
-	CFLAGS="-L $(BCM2835_BIN)/lib -I $(BCM2835_BIN)/include" $(MAKE) -C waveshare
+	CFLAGS="-L $(LIBGPIOD_BIN)/lib -I $(LIBGPIOD_BIN)/include -Wl,-rpath,$(LIBGPIOD_BIN)/lib" $(MAKE) -C waveshare
 
-.PHONY: bcm2835
-bcm2835:
-	cd $(BCM2835) && ./configure --prefix=$(BCM2835_BIN)
-	$(MAKE) -C $(BCM2835)
-	$(MAKE) -C $(BCM2835) install
+.PHONY: libgpiod
+libgpiod:
+	cd $(LIBGPIOD) && ./autogen.sh --enable-tools=no --prefix=$(LIBGPIOD_BIN)
+	$(MAKE) -C $(LIBGPIOD)
+	$(MAKE) -C $(LIBGPIOD) install
 
 .PHONY: loader
 loader: $(PYTHON_VENV)
@@ -34,7 +34,8 @@ $(PYTHON_VENV):
 clean: uninstall
 	rm -f $(SYSTEMD) $(CONFIG_SYSTEMD)
 	rm -rf $(PYTHON_VENV) $(PWD)/loader/__pycache__
-	$(MAKE) -C $(BCM2835) clean || true
+	$(MAKE) -C $(LIBGPIOD) clean || true
+	$(MAKE) -C $(LIBGPIOD) distclean || true
 	$(MAKE) -C $(WAVESHARE) clean || true
 
 $(SYSTEMD): systemd/luna.service.tmpl FORCE
@@ -47,13 +48,16 @@ $(CONFIG_SYSTEMD): systemd/luna-config.service.tmpl FORCE
 	env DIR=$(PWD) envsubst <$< >$@
 
 .PHONY: install
-install: $(SYSTEMD) $(CONFIG_SYSTEMD)
+install: $(SYSTEMD) $(CONFIG_SYSTEMD) systemd/luna.timer
 	for f in $^; do sudo systemctl enable $(PWD)/$$f; done
+	sudo systemctl start luna.timer
 	sudo systemctl start luna
 	sudo systemctl start luna-config
 
 .PHONY: uninstall
 uninstall:
+	sudo systemctl stop luna.timer || true
+	sudo systemctl disable luna.timer || true
 	sudo systemctl stop luna || true
 	sudo systemctl disable luna || true
 	sudo systemctl stop luna-config || true

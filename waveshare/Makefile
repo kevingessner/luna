@@ -8,21 +8,20 @@ TARGET = $(DIR_BIN)/epd
 CC = gcc
 
 MSG = -g -O3 -Wall
-DEBUG = -D USE_DEBUG
+DEBUG = -D USE_DEBUG -D DEBUG=1
 STD = -std=gnu99
 
-CFLAGS += $(MSG) $(DEBUG) $(STD)
+CFLAGS += $(MSG) $(DEBUG) $(STD) -DLIB=GPIOD -DGPIOD
 
-LIB = -lbcm2835 -lm -lrt -lpthread
+LIB = -lgpiod -lm -lrt -lpthread
 
 $(shell mkdir -p $(DIR_BIN))
 
 ${TARGET}:${OBJ_O}
-	$(CC) $(CFLAGS) $(OBJ_O) -o $@ $(LIB) 
+	$(CC) $(CFLAGS) $(OBJ_O) -o $@ $(LIB)
 
 ${DIR_BIN}/%.o:%.c
-	$(CC) $(CFLAGS) -c  $< -o $@ 
+	$(CC) $(CFLAGS) -c  $< -o $@
 
 clean :
 	rm -f $(DIR_BIN)/*.*
-

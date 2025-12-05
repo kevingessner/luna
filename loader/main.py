@@ -28,9 +28,10 @@ from luna import annotate
 from luna import config
 from luna import debug
 from luna import geometry
-from images import finder
+from images import renderer
 
 CACHE_DIR = '/var/tmp/luna'
+CACHE_TEMP_IMAGE_NAME = 'tmp-rendered.png'
 CACHE_FINAL_IMAGE_NAME = 'tmp-display.bmp'
 
 log = logging.getLogger(__name__)
@@ -38,12 +39,17 @@ log = logging.getLogger(__name__)
 def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: str, output_img_path: str):
     '''Apply the operations and annotations for the current time, date, and moon position.'''
     # Fit the image not just in the screen but inside the inner ring of annotations.
-    max_size = annot.azimuth_r1 * 2
+    max_size = annot.max_moon_size
     args = ('convert',
         input_img_path,
-        '-filter', 'catrom', # faster and sharper than the default
-        '-resize', f'{max_size}x{max_size}^',
-        # Center the (square) moon image on a canvas the size of the display,
+        # Trim off the extra bottom of the image.
+        '-background', 'transparent',
+        '-gravity', 'north',
+        '-extent', '%dx%d' % (max_size, max_size),
+        # 'Gray' makes for a nice contrasty conversion to grayscale
+        '-colorspace', 'Gray',
+        '-contrast-stretch', '0.15x0.05%',
+        # Center the (now-square) moon image on a canvas the size of the display,
         # rotated by the "position angle" (from the ephemeris; CW) and
         # "parallactic angle" (calculated; CCW) that account for the tilt of the illuminated limb.
         '-background', '#111',
@@ -61,9 +67,7 @@ def annotate_image(annot: annotate.Annotate, posangle: float, input_img_path: st
 def display_image(img_path: str, args):
     args = args + [img_path]
     log.info(f'displaying {args}')
-    # epd hangs occasionally. It takes <20s on a successful run,
-    # so kill it after 30.  The next cycle will try again.
-    subprocess.run(args, check=True, timeout=30)
+    subprocess.run(args, check=True, timeout=300)
 
 if __name__ == '__main__':
     def _parse_dims(s: str):
@@ -77,6 +81,7 @@ if __name__ == '__main__':
 
     utc_now = datetime.now(timezone.utc)
     output_img_path = os.path.join(CACHE_DIR, CACHE_FINAL_IMAGE_NAME)
+    temp_img_path = os.path.join(CACHE_DIR, CACHE_TEMP_IMAGE_NAME)
 
     import argparse
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -90,6 +95,7 @@ if __name__ == '__main__':
 
     output_img_path = args.output
     os.makedirs(os.path.dirname(output_img_path), exist_ok=True)
+    os.makedirs(os.path.dirname(temp_img_path), exist_ok=True)
 
     # The parsed datetime will be naive (no tzinfo); make it UTC without adjusting the time.
     utc_date = args.date.replace(tzinfo=timezone.utc)
@@ -102,7 +108,7 @@ if __name__ == '__main__':
         log.info(f'got location ({latitude}, {longitude})')
         mg = geometry.MoonGeometry.for_datetime(utc_date, latitude, longitude)
         annot = annotate.Annotate(*args.dimensions, mg, TZ)
-        (input_img_path, posangle) = finder.moon_image_for_datetime(mg.dt)
+        (input_img_path, posangle) = renderer.moon_image_for_datetime(mg.dt, temp_img_path, annot.max_moon_size)
         annotate_image(annot, posangle, input_img_path, output_img_path)
     except config.LunaNeedsConfigException as e:
         log.error('not configured', exc_info=e)

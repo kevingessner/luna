@@ -2,29 +2,42 @@
 <html>
     <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style type="text/css">
+            body {
+                font-family: sans-serif;
+            }
+            label {
+                display: block;
+                font-weight: bold;
+                font-size: 120%;
+                margin-bottom: 0.5em;
+            }
+            input, select {
+                font-size: 120%;
+                min-width: 10em;
+                margin: 0.2em 0;
+            }
+        </style>
     </head>
 
     <body>
         <h1>🌗 Luna setup</h1>
         <div id="form">
             <p>
-                <label for="datetime">Current time:</label>
-                <input type="datetime-local" name="datetime" />
-                <span id="timezone"></span>
-                <input name="tzcode" type="hidden" />
+                <label for="datetime">Current time</label>
+                <input type="datetime-local" name="datetime" id="datetime" />
+                <select name="tzcode">
+                </select>
             </p>
             <p>
-                <label for="latitude">Location:</label>
-                <input type="number" min="-90" max="90" step="0.01" name="latitude" placeholder="Latitude" />
-                <input type="number" min="-180" max="180" step="0.01" name="longitude" placeholder="Longitude" />
+                <label for="latitude">Location</label>
+                <input type="number" min="-90" max="90" step="0.01" name="latitude" id="latitude" placeholder="Latitude (+N,-S)" />
+                <input type="number" min="-180" max="180" step="0.01" name="longitude" placeholder="Longitude (+E,-W)" />
                 <button id="locate">Locate me</button>
             </p>
             <p id="message"></p>
             <p><input type="button" value="Continue" id="confirm" /></p>
-        </div>
-        <div id="wifi">
-            <p><b>Leave this page open</b> and connect your device to <b><span class="network-name"></span></b>. Then return to this page to continue.</p>
-            <p><a id="connected"><button>I'm connected to <span class="network-name"></span></button></p>
         </div>
         <div id="success">
             <h2>Success!</h2>
@@ -48,16 +61,44 @@
                 var formatted = Object.fromEntries(formatter.formatToParts(now).map(o => [o['type'], o['value']]));
                 var now_str = `${formatted['year']}-${formatted['month']}-${formatted['day']}T${formatted['hour']}:${formatted['minute']}`;
                 datetime_field.value = now_str;
-                // Set both the internal TZ code (like "America/New_York") to submit, and the short code to show the user.
-                var timezone_field = document.querySelector('[name=tzcode]');
-                timezone_field.value = formatter.resolvedOptions().timeZone;
-                document.querySelector('#timezone').innerText = `(${formatted['timeZoneName']})`;
+
+                var field = document.querySelector('[name=tzcode]');
+                var now_tz = formatter.resolvedOptions().timeZone;
+                var all_tzs = Intl.supportedValuesOf('timeZone');
+                // Shouldn't be possible for the returned TZ to not be in the list, but just to be safe.
+                if (!all_tzs.includes(now_tz)) {
+                    all_tzs.unshift(now_tz);
+                }
+                for (var tz of all_tzs) {
+                    var option = document.createElement('option');
+                    option.value = tz;
+                    option.innerText = tz;
+                    if (now_tz === tz) {
+                        option.selected = true;
+                    }
+                    field.append(option);
+                }
+            })();
+
+            (function() {
+                function setCurrentValue(valueId, fieldName) {
+                    var d = document.querySelector('#' + valueId);
+                    if (d && d.innerText) {
+                        document.querySelector('[name=' + fieldName + ']').value = d.innerText;
+                    }
+                }
+                // Nab values that are appended to the HTML by the config server.
+                // Run with setTimeout so it runs after the full file is parsed to the end.
+                setTimeout(function() {
+                    setCurrentValue('currentLatitude', 'latitude');
+                    setCurrentValue('currentLongitude', 'longitude');
+                }, 50);
             })();
 
             (function() {
                 const btn = document.querySelector('#locate');
-                if (!isSecureContext || !navigator.geolocation) {
-                    // Geolocation won't work in an insecure context.
+                if (!navigator.geolocation) {
+                    // Geolocation won't work in an insecure context (e.g. localhost, private network).
                     btn.remove();
                     return;
                 }
@@ -81,8 +122,6 @@
             })();
 
             (function() {
-                const isLunaLocal = false; // replaced when this page is served from luna itself!
-
                 const btn = document.querySelector('#confirm');
                 const msg = document.querySelector('#message');
 
@@ -91,26 +130,16 @@
                 }
 
                 toggleVisibility('form', true);
-                toggleVisibility('wifi', false);
                 toggleVisibility('success', false);
 
-                function present_wifi_success() {
+                function present_success() {
                     toggleVisibility('form', false);
-                    toggleVisibility('wifi', false);
                     toggleVisibility('success', true);
-                }
-
-                function present_wifi_setup(data) {
-                    toggleVisibility('form', false);
-                    toggleVisibility('wifi', true);
-                    toggleVisibility('success', false);
-                    // Can't post a form from the secure setup page to luna itself, so use a link -- GET will save it in the config server.
-                    document.querySelector('#connected').href = 'http://192.168.4.1?config=' + btoa(JSON.stringify(data));
                 }
 
                 // Used after saving the data, Luna redirects to the success page.
                 if (document.location.hash.replace('#', '') == 'success') {
-                    present_wifi_success();
+                    present_success();
                     document.location.hash = '';
                     return;
                 }
@@ -129,35 +158,27 @@
                         data[field] = f.value;
                     }
 
-                    // If this is served from Luna directly, save locally.  This does not work from a hosted page
-                    // because fetch()ing an insecure URL is forbidden from a secure one.
-                    if (isLunaLocal) {
-                        msg.innerText = 'Saving...';
-                        try {
-                            const resp = await fetch('', {
-                                method: "POST",
-                                body: JSON.stringify(data),
-                                headers: {
-                                    "Content-Type": "application/json",
-                                },
-                            });
-                            if (resp.ok) {
-                                present_wifi_success();
-                            } else {
-                                const error = await resp.text();
-                                msg.innerText = `Something went wrong. Please try again. (${error})`;
-                            }
-                        } catch (e) {
-                            msg.innerText = `Something went wrong. Please try again. (${e})`;
+                    msg.innerText = 'Saving...';
+                    try {
+                        const resp = await fetch('', {
+                            method: "POST",
+                            body: JSON.stringify(data),
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                        });
+                        if (resp.ok) {
+                            present_success();
+                        } else {
+                            const error = await resp.text();
+                            msg.innerText = `Something went wrong. Please try again. (${error})`;
                         }
-                        return;
+                    } catch (e) {
+                        msg.innerText = `Something went wrong. Please try again. (${e})`;
                     }
-
-                    present_wifi_setup(data);
                 });
             })();
         </script>
     </body>
 
 </html>
-

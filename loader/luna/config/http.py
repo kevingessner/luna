@@ -27,7 +27,7 @@ def set_time(dt: datetime):
     # Set the timezone first.
     _subprocess(['sudo', 'timedatectl', 'set-timezone', dt.tzinfo.key])
     # Set the system and hardware clocks.  `set-time` must be set with a local timestamp, but will store the time in UTC.
-    _subprocess(['sudo', 'timedatectl', 'set-time', dt.astimezone().strftime('%Y-%m-%d %H:%M:%S')])
+    _subprocess(['sudo', 'timedatectl', 'set-time', dt.strftime('%Y-%m-%d %H:%M:%S')])
 
 def save_config(config):
     for name in ['latitude', 'longitude']:
